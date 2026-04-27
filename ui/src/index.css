@@ -1,0 +1,108 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 240 10% 4.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 4.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 4.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 100%;
+    --primary-foreground: 240 5.9% 10%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 240 4.9% 83.9%;
+    --radius: 1.5rem;
+
+    /* 4pt Spacing System */
+    --space-4: 4px;
+    --space-8: 8px;
+    --space-12: 12px;
+    --space-16: 16px;
+    --space-24: 24px;
+    --space-32: 32px;
+    --space-48: 48px;
+    --space-64: 64px;
+    --space-96: 96px;
+
+    /* Motion Tokens - Expo Out */
+    --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+    --duration-micro: 80ms;
+    --duration-base: 250ms;
+    --duration-slow: 600ms;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased selection:bg-primary/20;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    overflow-x: hidden;
+  }
+
+  /* Premium Typography */
+  h1, h2, h3, h4, h5, h6 {
+    @apply tracking-tight font-bold;
+  }
+
+  /* Accessible & Snappy Focus */
+  :focus {
+    @apply outline-none;
+  }
+  :focus-visible {
+    @apply ring-2 ring-primary ring-offset-4 ring-offset-background transition-shadow duration-75;
+  }
+
+  /* Luxurious Scrollbars */
+  ::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-white/10 rounded-full hover:bg-white/20 transition-colors;
+  }
+}
+
+@layer components {
+  .glass {
+    @apply bg-background/70 backdrop-blur-3xl border-white/5;
+  }
+  
+  .premium-card {
+    @apply bg-card border border-white/5 rounded-[2rem] p-8 shadow-2xl transition-all duration-500 
+           hover:border-primary/20 hover:shadow-primary/5 hover:-translate-y-1 relative overflow-hidden;
+  }
+
+  .interactive-btn {
+    @apply transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:pointer-events-none;
+  }
+}
+
+/* Page Transitions */
+.page-enter {
+  opacity: 0;
+  transform: translateY(10px);
+}
+.page-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity var(--duration-slow) var(--ease-out-expo), 
+              transform var(--duration-slow) var(--ease-out-expo);
+}

@@ -1,0 +1,2 @@
+// Adapter: Custom
+export {};

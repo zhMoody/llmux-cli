@@ -1,19 +1,16 @@
 {
   "name": "llmux-cli",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "LLM + mux (multiplexer), local AI API aggregation tool.",
-  "main": "dist/index.js",
+  "type": "module",
+  "main": "src/cli/index.ts",
   "bin": {
-    "llmux": "dist/index.js"
+    "llmux": "src/cli/index.ts"
   },
-  "files": [
-    "dist"
-  ],
   "scripts": {
-    "build": "tsc",
-    "prepublishOnly": "npm run build",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node dist/index.js"
+    "dev": "bun run src/cli/index.ts",
+    "start": "bun run src/cli/index.ts start",
+    "test": "bun test"
   },
   "keywords": [
     "llm",
@@ -24,7 +21,6 @@
   ],
   "author": "Moody",
   "license": "AGPL-3.0",
-  "type": "commonjs",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/zhMoody/llmux-cli.git"
@@ -34,9 +30,11 @@
   },
   "homepage": "https://github.com/zhMoody/llmux-cli#readme",
   "dependencies": {
-    "@zh-moody/safe-env": "^0.4.3"
+    "@zh-moody/safe-env": "^0.4.3",
+    "cac": "^6.7.14"
   },
   "devDependencies": {
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "@types/bun": "latest"
   }
 }
