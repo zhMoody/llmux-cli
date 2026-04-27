@@ -1,0 +1,1 @@
+#!/usr/bin/env node`n`nconsole.log("llmux v0.1.0 (TypeScript)");`nconsole.log("Gateway:  http://localhost:25975");`nconsole.log("Web UI:   http://localhost:25975/ui");
