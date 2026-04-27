@@ -1,11 +1,13 @@
 import { db } from "../../db/index.js";
+import { dispatcher } from "../../services/dispatcher.js";
 
 /**
  * 获取服务商健康摘要
  */
 export function getHealthStatus() {
   try {
-    const providers = ["openai", "anthropic", "gemini"];
+    const accounts = dispatcher.getAccounts();
+    const providers = Array.from(new Set(accounts.map(a => a.provider_id)));
     const healthData = providers.map(p => {
       // 查询最近 50 次请求的成功率
       const stats = db.query(`

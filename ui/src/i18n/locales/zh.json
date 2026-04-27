@@ -90,8 +90,10 @@
     },
     "tech": "技术驱动工程",
     "madeWith": "由 LLMux 团队倾力打造",
-    "source": "源码仓库",
-    "docs": "技术文档"
+    "source": "项目源码",
+    "docs": "文档地址",
+    "support": "致支持者",
+    "sponsor": "爱发电赞助"
   },
   "accounts": {
     "title": "账户管理",

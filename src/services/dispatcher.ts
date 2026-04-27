@@ -3,6 +3,7 @@ import { decryptKey } from "./crypto.js";
 import { openaiAdapter } from "../gateway/adapters/openai.js";
 import { anthropicAdapter } from "../gateway/adapters/anthropic.js";
 import { geminiAdapter } from "../gateway/adapters/gemini.js";
+import { customAdapter } from "../gateway/adapters/custom.js";
 import { usageService } from "./usage.js";
 import type { ChatRequest, Account } from "../gateway/types.js";
 
@@ -91,6 +92,12 @@ export class Dispatcher {
             break;
           case "gemini":
             response = await geminiAdapter.handleChat(request, account);
+            break;
+          case "custom":
+          case "poe":
+          case "claude":
+          case "qwen":
+            response = await customAdapter.handleChat(request, account);
             break;
           default:
             return Response.json({ error: `Unsupported provider: ${providerId}` }, { status: 400 });
@@ -186,7 +193,7 @@ export class Dispatcher {
    * 汇总所有活跃账户的模型列表（对所有账户取并集）
    */
   async listAllModels(): Promise<any[]> {
-    const providers = ["openai", "anthropic", "gemini"];
+    const providers = ["openai", "anthropic", "gemini", "custom", "poe", "claude", "qwen"];
     const allModels: any[] = [];
     const seenModels = new Set<string>();
 
@@ -203,6 +210,7 @@ export class Dispatcher {
         if (acc.provider_id === "openai") models = await openaiAdapter.listModels(acc);
         else if (acc.provider_id === "anthropic") models = await anthropicAdapter.listModels(acc);
         else if (acc.provider_id === "gemini") models = await geminiAdapter.listModels(acc);
+        else if (["custom", "poe", "claude", "qwen"].includes(acc.provider_id)) models = await customAdapter.listModels(acc);
         return models;
       } catch (e) {
         console.error(`[Dispatcher] Failed to list models for account ${acc.alias}:`, e);
