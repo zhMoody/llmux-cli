@@ -30,7 +30,7 @@ export class OpenAIAdapter implements Adapter {
     });
     if (!response.ok) return [];
     const data = await response.json() as any;
-    return data.data || [];
+    return (data.data || []).map((m: any) => ({ ...m, owned_by: account.alias }));
   }
 }
 

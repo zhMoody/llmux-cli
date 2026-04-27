@@ -8,6 +8,7 @@ import { handleWebSession } from "./routes/auth.js";
 import { getUsageSummary, getUsageDetails } from "./routes/usage.js";
 import { getSettings, updateSettings } from "./routes/settings.js";
 import { getHealthStatus } from "./routes/health.js";
+import { listApiKeys, createApiKey, deleteApiKey, checkAuth } from "./routes/keys.js";
 
 /**
  * 启动 HTTP Gateway
@@ -18,17 +19,43 @@ export function startGateway() {
     async fetch(req) {
       const url = new URL(req.url);
 
-      // 1. API 路由分发
+      // 1. 鉴权逻辑
+      // 仅拦截外部 API 路径 (/v1/)，管理接口(/api/)和静态文件放行
+      if (url.pathname.startsWith("/v1/")) {
+        let requestedModel: string | undefined;
+        if (url.pathname === "/v1/chat/completions" && req.method === "POST") {
+          try {
+            const body = await req.clone().json() as any;
+            requestedModel = body.model;
+          } catch (e) {}
+        }
+
+        const auth = checkAuth(req, requestedModel);
+        if (!auth.authorized) {
+          return Response.json({ error: "Unauthorized", message: auth.error }, { status: 401 });
+        }
+      }
+
+      // 2. API 路由分发
       if (req.method === "POST" && url.pathname === "/v1/chat/completions") {
         return handleChatRoute(req);
       }
 
       if (req.method === "GET" && url.pathname === "/v1/models") {
-        const models = await dispatcher.listAllModels();
+        const models = dispatcher.listModelAliases();
         return Response.json({ data: models });
       }
 
       // 1.1 管理 API (Web UI 调用)
+      // API Key 管理
+      if (url.pathname === "/api/keys") {
+        if (req.method === "GET") return listApiKeys();
+        if (req.method === "POST") return createApiKey(req);
+      }
+      if (url.pathname.startsWith("/api/keys/")) {
+        const id = url.pathname.split("/").pop();
+        if (id && req.method === "DELETE") return deleteApiKey(id);
+      }
       // 身份认证与 Session 导入
       if (url.pathname === "/api/auth/web-session" && req.method === "POST") {
         return handleWebSession(req);
@@ -58,9 +85,29 @@ export function startGateway() {
         if (req.method === "POST") return setModelAlias(req);
       }
 
+      if (url.pathname === "/api/models/health" && req.method === "GET") {
+        const { getModelsHealth } = await import("./routes/models.js");
+        return getModelsHealth();
+      }
+
+      if (url.pathname === "/api/models/test-queue/status" && req.method === "GET") {
+        const { getTestQueueStatus } = await import("./routes/models.js");
+        return getTestQueueStatus();
+      }
+
+      if (url.pathname === "/api/models/test-all" && req.method === "POST") {
+        const { startTestQueue } = await import("./routes/models.js");
+        return startTestQueue(req);
+      }
+
       if (url.pathname.startsWith("/api/models/aliases/")) {
         const id = url.pathname.split("/").pop();
         if (id && req.method === "DELETE") return deleteModelAlias(id);
+      }
+      
+      if (url.pathname === "/api/models/test" && req.method === "POST") {
+        const { testModel } = await import("./routes/models.js");
+        return testModel(req);
       }
 
       // 用量统计

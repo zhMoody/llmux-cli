@@ -36,12 +36,29 @@ export class Dispatcher {
   }
 
   /**
-   * 获取某 Provider 下的所有健康可用账户，并解密 Key
+   * 获取某 Provider 下的所有健康可用账户 (如果 providerId 为空则获取所有)，并解密 Key
+   * 支持通过 provider_id 或 account alias 进行匹配
    */
-  getAccounts(providerId: string): Account[] {
-    const stmt = db.query("SELECT * FROM accounts WHERE provider_id = ? AND is_active = 1 ORDER BY weight DESC, id ASC");
-    const accounts = stmt.all(providerId) as Account[];
-    
+  getAccounts(providerId?: string): Account[] {
+    let query = "SELECT * FROM accounts WHERE is_active = 1";
+    let params: any[] = [];
+
+    if (providerId) {
+      // 智能匹配：优先匹配 provider_id，如果没有则匹配 alias (别名回退)
+      const hasProviderId = db.query("SELECT 1 FROM accounts WHERE provider_id = ? AND is_active = 1").get(providerId);
+      if (hasProviderId) {
+        query += " AND provider_id = ?";
+      } else {
+        query += " AND alias = ?";
+      }
+      params.push(providerId);
+    }
+
+    query += " ORDER BY weight DESC, id ASC";
+
+    const stmt = db.query(query);
+    const accounts = stmt.all(...params) as Account[];
+
     return accounts.map(acc => {
       try {
         return {
@@ -58,21 +75,22 @@ export class Dispatcher {
   /**
    * 调度聊天请求（带自动重试机制）
    */
-  async dispatchChat(request: ChatRequest): Promise<Response> {
-    const { providerId, targetModel } = this.resolveModel(request.model);
+  async dispatchChat(request: ChatRequest, forcedProviderId?: string): Promise<Response> {
+    const { providerId: resolvedProviderId, targetModel } = this.resolveModel(request.model);
+    const providerId = forcedProviderId || resolvedProviderId;
     const originalModel = request.model;
-    
+
     // 覆写为真实模型名
     request.model = targetModel;
 
     const accounts = this.getAccounts(providerId);
     if (accounts.length === 0) {
-      return Response.json({ error: `No active accounts available for provider: ${providerId}` }, { status: 503 });
+      return Response.json({ error: `No active accounts available for: ${providerId}` }, { status: 503 });
     }
 
     // 获取当前轮询索引
     let idx = accountIndices.get(providerId) || 0;
-    const maxAttempts = accounts.length; 
+    const maxAttempts = accounts.length;
     let attempts = 0;
     let lastResponse: Response | null = null;
 
@@ -81,9 +99,14 @@ export class Dispatcher {
       const account = accounts[currentIdx];
       const startTime = Date.now();
 
+      // 根据该账户真实的 provider_id 确定 Provider 类型
+      const realProviderId = account.provider_id;
+      const providerMeta = db.query("SELECT type FROM providers WHERE id = ?").get(realProviderId) as { type: string } | undefined;
+      const providerType = providerMeta?.type || realProviderId;
+
       try {
         let response: Response;
-        switch (providerId) {
+        switch (providerType) {
           case "openai":
             response = await openaiAdapter.handleChat(request, account);
             break;
@@ -100,9 +123,13 @@ export class Dispatcher {
             response = await customAdapter.handleChat(request, account);
             break;
           default:
-            return Response.json({ error: `Unsupported provider: ${providerId}` }, { status: 400 });
+            // 如果 ID 匹配常见前缀也尝试使用 Custom
+            if (["deepseek", "kimi", "moonshot", "step"].includes(realProviderId)) {
+              response = await customAdapter.handleChat(request, account);
+              break;
+            }
+            return Response.json({ error: `Unsupported provider type: ${providerType} (ID: ${realProviderId})` }, { status: 400 });
         }
-
         const latency = Date.now() - startTime;
 
         // 拦截 429 限速和鉴权错误，触发自动切换
@@ -112,7 +139,7 @@ export class Dispatcher {
           
           usageService.logUsage({
             accountId: account.id,
-            providerId,
+            providerId: account.provider_id,
             model: targetModel,
             inputTokens: 0,
             outputTokens: 0,
@@ -131,17 +158,18 @@ export class Dispatcher {
 
         // 如果是非流式响应，我们尝试解析 Token 数量（通过克隆响应体避免干扰后续流程）
         if (!request.stream) {
-          this.logNonStreamUsage(response.clone(), account.id, providerId, targetModel, latency);
+          this.logNonStreamUsage(response.clone(), account.id, account.provider_id, targetModel, latency);
         } else {
           // 流式响应目前简单记录
           usageService.logUsage({
             accountId: account.id,
-            providerId,
+            providerId: account.provider_id,
             model: targetModel,
             inputTokens: 0,
             outputTokens: 0,
             latencyMs: latency,
-            success: true
+            success: true,
+            limitCache: this.getLimitCacheFromHeaders(response.headers)
           });
         }
 
@@ -153,7 +181,7 @@ export class Dispatcher {
         
         usageService.logUsage({
           accountId: account.id,
-          providerId,
+          providerId: account.provider_id,
           model: targetModel,
           inputTokens: 0,
           outputTokens: 0,
@@ -169,6 +197,21 @@ export class Dispatcher {
     return lastResponse || Response.json({ error: "All accounts exhausted" }, { status: 503 });
   }
 
+  private getLimitCacheFromHeaders(headers: Headers) {
+    const limits: any = {};
+    const extract = (key: string) => {
+      const val = headers.get(key);
+      if (val) limits[key] = val;
+    };
+    extract('x-ratelimit-limit-requests');
+    extract('x-ratelimit-remaining-requests');
+    extract('x-ratelimit-limit-tokens');
+    extract('x-ratelimit-remaining-tokens');
+    extract('x-quota-total');
+    extract('x-quota-remaining');
+    return Object.keys(limits).length > 0 ? limits : undefined;
+  }
+
   /**
    * 异步解析并记录非流式响应的用量
    */
@@ -177,12 +220,13 @@ export class Dispatcher {
       const data = await response.json() as any;
       usageService.logUsage({
         accountId,
-        providerId,
+        providerId: providerId, // This one is passed to the function, but wait...
         model,
         inputTokens: data.usage?.prompt_tokens || 0,
         outputTokens: data.usage?.completion_tokens || 0,
         latencyMs: latency,
-        success: true
+        success: true,
+        limitCache: this.getLimitCacheFromHeaders(response.headers)
       });
     } catch (e) {
       // 解析失败不影响主流程
@@ -193,25 +237,28 @@ export class Dispatcher {
    * 汇总所有活跃账户的模型列表（对所有账户取并集）
    */
   async listAllModels(): Promise<any[]> {
-    const providers = ["openai", "anthropic", "gemini", "custom", "poe", "claude", "qwen"];
     const allModels: any[] = [];
-    const seenModels = new Set<string>();
+    const seenModelKeys = new Set<string>();
 
-    // 1. 收集所有活跃账户
-    const activeAccounts: Account[] = [];
-    for (const p of providers) {
-      activeAccounts.push(...this.getAccounts(p));
-    }
+    // 1. 获取所有活跃账户
+    const activeAccounts = this.getAccounts();
 
     // 2. 并发请求所有账户的模型列表
     const modelPromises = activeAccounts.map(async (acc) => {
       try {
         let models: any[] = [];
-        if (acc.provider_id === "openai") models = await openaiAdapter.listModels(acc);
-        else if (acc.provider_id === "anthropic") models = await anthropicAdapter.listModels(acc);
-        else if (acc.provider_id === "gemini") models = await geminiAdapter.listModels(acc);
-        else if (["custom", "poe", "claude", "qwen"].includes(acc.provider_id)) models = await customAdapter.listModels(acc);
-        return models;
+        const providerType = (db.query("SELECT type FROM providers WHERE id = ?").get(acc.provider_id) as any)?.type || acc.provider_id;
+
+        if (providerType === "openai") models = await openaiAdapter.listModels(acc);
+        else if (providerType === "anthropic") models = await anthropicAdapter.listModels(acc);
+        else if (providerType === "gemini") models = await geminiAdapter.listModels(acc);
+        else if (["custom", "poe", "claude", "qwen"].includes(providerType)) models = await customAdapter.listModels(acc);
+        
+        // 将模型打上账户别名的标签，方便前端显示和后续路由
+        return models.map(m => ({
+          ...m,
+          owned_by: acc.alias // 使用账户别名作为显示厂商
+        }));
       } catch (e) {
         console.error(`[Dispatcher] Failed to list models for account ${acc.alias}:`, e);
         return [];
@@ -220,17 +267,31 @@ export class Dispatcher {
 
     const results = await Promise.all(modelPromises);
 
-    // 3. 取并集去重
+    // 3. 汇总并去重 (相同账号下的相同模型去重，不同账号的同名模型保留)
     for (const models of results) {
       for (const m of models) {
-        if (!seenModels.has(m.id)) {
+        const key = `${m.owned_by}:${m.id}`;
+        if (!seenModelKeys.has(key)) {
           allModels.push(m);
-          seenModels.add(m.id);
+          seenModelKeys.add(key);
         }
       }
     }
 
     return allModels;
+  }
+
+  /**
+   * 仅列出用户定义的模型别名（用于精简 v1/models 输出）
+   */
+  listModelAliases(): any[] {
+    const aliases = db.query("SELECT alias FROM model_aliases").all() as { alias: string }[];
+    return aliases.map(a => ({
+      id: a.alias,
+      object: "model",
+      created: Date.now(),
+      owned_by: "llmux-alias"
+    }));
   }
 }
 

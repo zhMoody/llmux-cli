@@ -59,7 +59,7 @@ export class AnthropicAdapter implements Adapter {
       id: m.id,
       object: "model",
       created: Date.now(),
-      owned_by: "anthropic"
+      owned_by: account.alias
     }));
   }
 

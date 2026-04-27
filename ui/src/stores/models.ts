@@ -23,6 +23,9 @@ interface ModelsState {
   fetchAliases: () => Promise<void>;
   addAlias: (alias: string, targetModel: string, providerId?: string) => Promise<void>;
   deleteAlias: (id: number) => Promise<void>;
+  testModel: (modelId: string, providerId?: string) => Promise<{ success: boolean; error?: string; latency?: number }>;
+  startTestQueue: (models: { model: string, providerId: string }[]) => Promise<{ success: boolean; error?: string }>;
+  fetchTestQueueStatus: () => Promise<{ isRunning: boolean; current: number; total: number; progress: number }>;
 }
 
 export const useModelsStore = create<ModelsState>((set, get) => ({
@@ -83,4 +86,39 @@ export const useModelsStore = create<ModelsState>((set, get) => ({
       throw err;
     }
   },
+
+  testModel: async (modelId, providerId) => {
+    try {
+      const res = await fetch('/api/models/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: modelId, providerId }),
+      });
+      return await res.json();
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  },
+
+  startTestQueue: async (models) => {
+    try {
+      const res = await fetch('/api/models/test-all', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ models }),
+      });
+      return await res.json();
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  },
+
+  fetchTestQueueStatus: async () => {
+    try {
+      const res = await fetch('/api/models/test-queue/status');
+      return await res.json();
+    } catch (err: any) {
+      return { isRunning: false, progress: 0, current: 0, total: 0 };
+    }
+  }
 }));

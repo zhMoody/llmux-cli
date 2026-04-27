@@ -8,7 +8,7 @@ import {
   Info,
   ChevronRight,
   Zap,
-  User
+  Key as KeyIcon
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import Accounts from './routes/accounts';
@@ -17,6 +17,7 @@ import Dashboard from './routes/dashboard';
 import Usage from './routes/usage';
 import SettingsPage from './routes/settings';
 import About from './routes/about';
+import KeysPage from './routes/keys';
 
 function cn(...classes: (string | undefined | null | false)[]) {
   return classes.filter(Boolean).join(' ');
@@ -86,6 +87,7 @@ function App() {
             <NavItem to="/" icon={LayoutDashboard} labelKey="common.dashboard" />
             <NavItem to="/accounts" icon={Users} labelKey="common.accounts" />
             <NavItem to="/models" icon={Box} labelKey="common.models" />
+            <NavItem to="/keys" icon={KeyIcon} labelKey="common.keys" />
             <NavItem to="/usage" icon={Activity} labelKey="common.usage" />
             
             <div className="pt-6 text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest px-3 mb-2">{t('common.menuPref')}</div>
@@ -120,6 +122,7 @@ function App() {
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/accounts" element={<Accounts />} />
                 <Route path="/models" element={<Models />} />
+                <Route path="/keys" element={<KeysPage />} />
                 <Route path="/usage" element={<Usage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/about" element={<About />} />

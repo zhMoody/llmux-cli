@@ -9,6 +9,10 @@ export function getHealthStatus() {
     const accounts = dispatcher.getAccounts();
     const providers = Array.from(new Set(accounts.map(a => a.provider_id)));
     const healthData = providers.map(p => {
+      // 获取厂商显示名称
+      const providerMeta = db.query("SELECT name FROM providers WHERE id = ?").get(p) as { name: string } | undefined;
+      const name = providerMeta?.name || p;
+
       // 查询最近 50 次请求的成功率
       const stats = db.query(`
         SELECT 
@@ -30,6 +34,7 @@ export function getHealthStatus() {
 
       return {
         id: p,
+        name,
         status,
         lastSuccess: stats?.success || 0,
         totalChecks: stats?.total || 0

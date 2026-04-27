@@ -69,7 +69,7 @@ export class GeminiAdapter implements Adapter {
         id: m.name.replace("models/", ""), 
         object: "model",
         created: Date.now(),
-        owned_by: "google"
+        owned_by: account.alias
       }));
       console.log(`[Gemini Adapter] Successfully listed ${models.length} models.`);
       return models;

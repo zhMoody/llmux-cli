@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS accounts (
   is_active INTEGER DEFAULT 1,
   weight INTEGER DEFAULT 1,
   notes TEXT,
+  limits_cache TEXT, -- JSON string storing quota/limit data (e.g. {"remaining_tokens": ...})
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -56,9 +57,18 @@ CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value TEXT
 );
+
+-- 访问密钥管理
+CREATE TABLE IF NOT EXISTS api_keys (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  key TEXT NOT NULL UNIQUE,
+  allowed_models TEXT DEFAULT '*', -- JSON 数组或 '*' 表示全部
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
 `;
 
-// 初始数据插入（内置 Provider）
+// 初始数据插入（内置 Provider & 常用模型别名）
 export const SEED_DATA = `
 INSERT OR IGNORE INTO providers (id, name, type) VALUES ('openai', 'OpenAI', 'openai');
 INSERT OR IGNORE INTO providers (id, name, type) VALUES ('anthropic', 'Anthropic', 'anthropic');

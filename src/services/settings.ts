@@ -39,6 +39,19 @@ export class SettingsService {
     });
     transaction(settings);
   }
+
+  /**
+   * 获取或创建网关安全密钥
+   */
+  getOrCreateGatewayKey(): string {
+    const settings = this.getAll();
+    if (settings.gateway_key) return settings.gateway_key;
+
+    // 生成随机 32 位密钥
+    const newKey = `sk-llmux-${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
+    this.set("gateway_key", newKey);
+    return newKey;
+  }
 }
 
 export const settingsService = new SettingsService();

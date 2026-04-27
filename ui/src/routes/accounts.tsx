@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAccountsStore } from '../stores/accounts';
+import { useModelsStore } from '../stores/models';
 import { 
   Users, 
   Trash2, 
@@ -12,10 +13,11 @@ import {
   Save,
   Monitor,
   Copy,
-  CheckCircle2
+  CheckCircle2,
+  Pencil
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Modal } from '../components/Modal';
+import { Dialog, ConfirmDialog } from '../components/Modal';
 
 function cn(...classes: (string | undefined | null | false)[]) {
   return classes.filter(Boolean).join(' ');
@@ -23,11 +25,16 @@ function cn(...classes: (string | undefined | null | false)[]) {
 
 export default function Accounts() {
   const { t } = useTranslation();
-  const { accounts, isLoading, fetchAccounts, addAccount, deleteAccount, toggleActive } = useAccountsStore();
+  const { accounts, isLoading, fetchAccounts, addAccount, updateAccount, deleteAccount, toggleActive } = useAccountsStore();
+  const { fetchModels, startTestQueue, availableModels } = useModelsStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editingAccount, setEditingAccount] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'api' | 'web'>('api');
-  const [formData, setFormData] = useState({ alias: '', provider_id: 'openai', api_key: '', base_url: '' });
+  const [formData, setFormData] = useState({ alias: '', provider_id: 'custom', api_key: '', base_url: '' });
+  const [editData, setEditData] = useState({ alias: '', provider_id: '', api_key: '', base_url: '', notes: '' });
   const [copied, setCopied] = useState(false);
+  const [accountToDelete, setAccountToDelete] = useState<{id: number, name: string} | null>(null);
 
   useEffect(() => {
     fetchAccounts();
@@ -38,7 +45,40 @@ export default function Accounts() {
     try {
       await addAccount(formData);
       setIsModalOpen(false);
-      setFormData({ alias: '', provider_id: 'openai', api_key: '', base_url: '' });
+      setFormData({ alias: '', provider_id: 'custom', api_key: '', base_url: '' });
+      // 新增账户后，自动触发一次全局背景测试
+      triggerAutoTest();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const triggerAutoTest = async () => {
+    // 1. 先拉取最新的模型列表（因为新增了账户，模型可能变动）
+    await fetchModels();
+    // 2. 获取当前最新的模型状态
+    const latestModels = useModelsStore.getState().availableModels;
+    if (latestModels.length > 0) {
+      const modelsToTest = latestModels.map(m => ({ model: m.id, providerId: m.owned_by }));
+      await startTestQueue(modelsToTest);
+    }
+  };
+
+  const openEdit = (acc: any) => {
+    setEditingAccount(acc);
+    setEditData({ alias: acc.alias, provider_id: acc.provider_id, api_key: '', base_url: acc.base_url || '', notes: acc.notes || '' });
+    setIsEditOpen(true);
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingAccount) return;
+    try {
+      await updateAccount(editingAccount.id, editData);
+      setIsEditOpen(false);
+      setEditingAccount(null);
+      // 修改账户后也触发一次（比如修改了 Key 或 BaseURL）
+      triggerAutoTest();
     } catch (err) {
       console.error(err);
     }
@@ -103,20 +143,26 @@ export default function Accounts() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-               <button 
-                 onClick={() => toggleActive(acc.id, acc.is_active)}
-                 className="p-2 hover:bg-muted rounded-lg text-muted-foreground transition-colors"
-               >
-                 <Settings2 size={16} />
-               </button>
-               <button 
-                 onClick={() => { if(confirm(t('accounts.deleteConfirm', { name: acc.alias }))) deleteAccount(acc.id); }}
-                 className="p-2 hover:bg-red-500/10 hover:text-red-500 rounded-lg text-muted-foreground transition-colors"
-               >
-                 <Trash2 size={16} />
-               </button>
-            </div>
+              <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                 <button 
+                   onClick={() => openEdit(acc)}
+                   className="p-2 hover:bg-primary/10 hover:text-primary rounded-lg text-muted-foreground transition-colors"
+                   title="Edit account"
+                 >
+                   <Pencil size={16} />
+                 </button>
+                 <button 
+                   onClick={() => toggleActive(acc.id, acc.is_active)}
+                   className="p-2 hover:bg-muted rounded-lg text-muted-foreground transition-colors"
+                 >
+                   <Settings2 size={16} />
+                 </button>
+                 <button
+                   onClick={() => setAccountToDelete({ id: acc.id, name: acc.alias })}
+                   className="p-2 hover:bg-red-500/10 hover:text-red-500 rounded-lg text-muted-foreground transition-colors"
+                 >
+                   <Trash2 size={16} />
+                 </button>              </div>
           </div>
         ))}
 
@@ -128,17 +174,17 @@ export default function Accounts() {
         )}
       </div>
 
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={t('accounts.registerTitle')}>
+      <Dialog isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={t('accounts.registerTitle')}>
         <div className="space-y-6">
           {/* Tabs */}
           <div className="flex bg-muted rounded-xl p-1">
-             <button 
+             <button
                onClick={() => setActiveTab('api')}
                className={cn("flex-1 py-2 text-xs font-bold rounded-lg transition-all", activeTab === 'api' ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
              >
                 API Key
              </button>
-             <button 
+             <button
                onClick={() => setActiveTab('web')}
                className={cn("flex-1 py-2 text-xs font-bold rounded-lg transition-all", activeTab === 'web' ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
              >
@@ -150,7 +196,7 @@ export default function Accounts() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-muted-foreground uppercase">{t('accounts.alias')}</label>
-                <input 
+                <input
                   type="text" required value={formData.alias}
                   onChange={e => setFormData({...formData, alias: e.target.value})}
                   placeholder={t('accounts.aliasPlaceholder')}
@@ -159,26 +205,29 @@ export default function Accounts() {
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-muted-foreground uppercase">{t('accounts.provider')}</label>
-                <select 
+                <select
                   value={formData.provider_id}
                   onChange={e => {
                     const pid = e.target.value;
-                    let burl = formData.base_url;
+                    let burl = '';
                     if (pid === 'qwen') burl = 'https://dashscope.aliyuncs.com/compatible-mode/v1';
+                    else if (pid === 'openai') burl = '';
+                    else if (pid === 'anthropic') burl = '';
+                    else if (pid === 'gemini') burl = '';
                     setFormData({...formData, provider_id: pid, base_url: burl});
                   }}
                   className="w-full px-4 py-2 bg-muted/50 border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all font-semibold"
                 >
+                  <option value="custom">Custom (OpenAI Compatible)</option>
                   <option value="openai">OpenAI</option>
                   <option value="anthropic">Anthropic</option>
                   <option value="gemini">Google Gemini</option>
                   <option value="qwen">Aliyun Qwen (DashScope)</option>
-                  <option value="custom">Custom (OpenAI Compatible)</option>
                 </select>
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-muted-foreground uppercase">{t('accounts.apiKey')}</label>
-                <input 
+                <input
                   type="password" required value={formData.api_key}
                   onChange={e => setFormData({...formData, api_key: e.target.value})}
                   placeholder="sk-..."
@@ -191,7 +240,7 @@ export default function Accounts() {
                   <label className="text-xs font-bold text-muted-foreground uppercase">{t('accounts.baseUrl')}</label>
                   <span className="text-[10px] text-muted-foreground opacity-50 font-medium italic">Optional</span>
                 </div>
-                <input 
+                <input
                   type="text" value={formData.base_url}
                   onChange={e => setFormData({...formData, base_url: e.target.value})}
                   placeholder="https://api.openai.com/v1"
@@ -209,7 +258,7 @@ export default function Accounts() {
             <div className="space-y-6">
                <div className="space-y-3">
                   <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground uppercase">{t('accounts.provider')}</div>
-                  <select 
+                  <select
                     value={formData.provider_id}
                     onChange={e => setFormData({...formData, provider_id: e.target.value})}
                     className="w-full px-4 py-2 bg-muted/50 border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all font-semibold"
@@ -218,19 +267,19 @@ export default function Accounts() {
                     <option value="claude">Claude Web</option>
                   </select>
                </div>
-               
+
                <div className="p-4 bg-muted/50 rounded-xl border border-border space-y-4">
                   <div className="flex items-start gap-3">
-                     <div className="w-5 h-5 rounded-full bg-primary/20 text-primary flex items-center justify-center text-[10px] font-bold mt-0.5">1</div>
+                     <div className="w-5 h-5 rounded-full bg-primary/20 text-primary flex items-center justify-center text-[10px] font-bold mt-0.5">1</div>  
                      <p className="text-xs font-medium leading-relaxed">{t('auth.step1')}</p>
                   </div>
                   <div className="flex items-start gap-3">
-                     <div className="w-5 h-5 rounded-full bg-primary/20 text-primary flex items-center justify-center text-[10px] font-bold mt-0.5">2</div>
+                     <div className="w-5 h-5 rounded-full bg-primary/20 text-primary flex items-center justify-center text-[10px] font-bold mt-0.5">2</div>  
                      <p className="text-xs font-medium leading-relaxed">{t('auth.step3')}</p>
                   </div>
-                  
+
                   <div className="pt-2">
-                     <button 
+                     <button
                        onClick={copyScript}
                        className="w-full flex items-center justify-center gap-2 py-3 bg-card border border-border rounded-lg text-xs font-bold hover:bg-muted transition-all"
                      >
@@ -239,7 +288,7 @@ export default function Accounts() {
                      </button>
                   </div>
                </div>
-               
+
                <div className="flex items-center gap-2 p-3 bg-amber-500/10 text-amber-600 rounded-lg text-[10px] font-bold">
                   <Monitor size={14} />
                   {t('auth.step3Hint')}
@@ -247,7 +296,80 @@ export default function Accounts() {
             </div>
           )}
         </div>
-      </Modal>
+      </Dialog>
+
+      {/* 编辑账户 Modal */}
+      <Dialog isOpen={isEditOpen} onClose={() => { setIsEditOpen(false); setEditingAccount(null); }} title="Edit Account">
+        <form onSubmit={handleEditSubmit} className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-muted-foreground uppercase">Alias</label>
+            <input
+              type="text" required value={editData.alias}
+              onChange={e => setEditData({...editData, alias: e.target.value})}
+              className="w-full px-4 py-2 bg-muted/50 border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-muted-foreground uppercase">Provider</label>
+            <select
+              value={editData.provider_id}
+              onChange={e => setEditData({...editData, provider_id: e.target.value})}
+              className="w-full px-4 py-2 bg-muted/50 border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all font-semibold"
+            >
+              <option value="custom">Custom (OpenAI Compatible)</option>
+              <option value="openai">OpenAI</option>
+              <option value="anthropic">Anthropic</option>
+              <option value="gemini">Google Gemini</option>
+              <option value="qwen">Aliyun Qwen (DashScope)</option>
+            </select>
+          </div>
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-muted-foreground uppercase">API Key</label>
+              <span className="text-[10px] text-muted-foreground italic">Leave blank to keep current</span>
+            </div>
+            <input
+              type="password" value={editData.api_key}
+              onChange={e => setEditData({...editData, api_key: e.target.value})}
+              placeholder="Leave blank to keep current key"
+              className="w-full px-4 py-2 bg-muted/50 border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all font-mono"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-muted-foreground uppercase">Base URL</label>
+              <span className="text-[10px] text-muted-foreground opacity-50 italic">Optional</span>
+            </div>
+            <input
+              type="text" value={editData.base_url}
+              onChange={e => setEditData({...editData, base_url: e.target.value})}
+              placeholder="https://api.openai.com/v1"
+              className="w-full px-4 py-2 bg-muted/50 border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+            />
+          </div>
+          <div className="pt-4 flex gap-3">
+             <button type="button" onClick={() => { setIsEditOpen(false); setEditingAccount(null); }} className="flex-1 px-4 py-2 text-sm font-bold border border-border rounded-lg hover:bg-muted transition-all">{t('common.cancel')}</button>
+             <button type="submit" className="flex-1 px-4 py-2 text-sm font-bold bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-all flex items-center justify-center gap-2">
+               <Save size={16} /> {t('common.save')}
+             </button>
+          </div>
+        </form>
+      </Dialog>
+
+      <ConfirmDialog
+        isOpen={!!accountToDelete}
+        onClose={() => setAccountToDelete(null)}
+        onConfirm={async () => {
+          if (accountToDelete) {
+            await deleteAccount(accountToDelete.id);
+            setAccountToDelete(null);
+          }
+        }}
+        title={t('common.delete')}
+        description={t('accounts.deleteConfirm', { name: accountToDelete?.name })}
+        confirmText={t('common.delete')}
+        variant="danger"
+      />
     </div>
   );
 }

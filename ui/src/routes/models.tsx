@@ -15,7 +15,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Modal } from '../components/Modal';
+import { Dialog, ConfirmDialog } from '../components/Modal';
 
 function cn(...classes: (string | undefined | null | false)[]) {
   return classes.filter(Boolean).join(' ');
@@ -23,16 +23,76 @@ function cn(...classes: (string | undefined | null | false)[]) {
 
 export default function Models() {
   const { t } = useTranslation();
-  const { availableModels, aliases, isLoading, fetchModels, fetchAliases, addAlias, deleteAlias } = useModelsStore();
+  const { availableModels, aliases, isLoading, fetchModels, fetchAliases, addAlias, deleteAlias, testModel } = useModelsStore();
   const [search, setSearch] = useState('');
   const [activeProvider, setActiveProvider] = useState<string>('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [aliasForm, setAliasForm] = useState({ alias: '', target: '', provider: '' });
+  const [testResults, setTestResults] = useState<Record<string, { success: boolean; latency?: number; error?: string; loading?: boolean; lastChecked?: string; limitsCache?: any }>>({});
+  const [queueStatus, setQueueStatus] = useState<{ isRunning: boolean; current: number; total: number; progress: number }>({ isRunning: false, current: 0, total: 0, progress: 0 });
+  const { startTestQueue, fetchTestQueueStatus } = useModelsStore();
+  const [testAllConfirm, setTestAllConfirm] = useState(false);
+  const [aliasToDelete, setAliasToDelete] = useState<{id: number, name: string} | null>(null);
 
+  const handleTest = async (modelId: string, providerId: string) => {
+    setTestResults(prev => ({ ...prev, [modelId]: { success: false, loading: true } }));
+    const result = await testModel(modelId, providerId);
+    // @ts-ignore
+    setTestResults(prev => ({ ...prev, [modelId]: { ...result, loading: false } }));
+  };
+
+  const fetchHealth = async () => {
+    try {
+      const res = await fetch('/api/models/health');
+      if (res.ok) {
+        const data = await res.json();
+        setTestResults(prev => {
+          const next = { ...prev };
+          data.forEach((row: any) => {
+            // Don't overwrite if it's currently loading
+            if (!next[row.model]?.loading) {
+              next[row.model] = {
+                success: Boolean(row.success),
+                latency: row.latency,
+                error: row.error,
+                lastChecked: row.last_checked,
+                limitsCache: row.limits_cache
+              };
+            }
+          });
+          return next;
+        });
+      }
+    } catch (e) {
+      console.error("Failed to fetch models health", e);
+    }
+  };
+
+  // 1. 初始加载数据
   useEffect(() => {
     fetchModels();
     fetchAliases();
+    fetchHealth();
+    // 进入页面时仅检查一次队列状态
+    fetchTestQueueStatus().then(setQueueStatus);
   }, []);
+
+  // 2. 智能轮询：仅在队列运行时开启定时器
+  useEffect(() => {
+    if (!queueStatus.isRunning) return;
+
+    const timer = setInterval(async () => {
+      const status = await fetchTestQueueStatus();
+      setQueueStatus(status);
+
+      // 如果还在跑，顺便刷新健康状态
+      if (status.isRunning) {
+        fetchHealth();
+      }
+    }, 2000);
+
+    return () => clearInterval(timer);
+  }, [queueStatus.isRunning]);
 
   const providers = useMemo(() => {
     const p = Array.from(new Set(availableModels.map(m => m.owned_by)));
@@ -55,6 +115,20 @@ export default function Models() {
     });
   }, [availableModels, search, activeProvider]);
 
+  const handleTestAll = () => {
+    if (queueStatus.isRunning) return;
+    setTestAllConfirm(true);
+  };
+
+  const executeTestAll = async () => {
+    const modelsToTest = filteredModels.map(m => ({ model: m.id, providerId: m.owned_by }));
+    await startTestQueue(modelsToTest);
+
+    // 立即刷新状态
+    const status = await fetchTestQueueStatus();
+    setQueueStatus(status);
+    setTestAllConfirm(false);
+  };
   const handleAddAlias = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -81,7 +155,16 @@ export default function Models() {
         </div>
         <div className="flex items-center gap-2">
            <button 
-             onClick={() => fetchModels()}
+             onClick={handleTestAll}
+             disabled={queueStatus.isRunning || filteredModels.length === 0}
+             className="flex items-center gap-2 px-3 py-2 bg-amber-500/10 text-amber-600 rounded-lg text-sm font-medium hover:bg-amber-500/20 transition-all shadow-sm disabled:opacity-50"
+             title="Test all filtered models sequentially in backend"
+           >
+             <Zap size={16} className={cn(queueStatus.isRunning && "animate-pulse")} />
+             {queueStatus.isRunning ? `Testing (${queueStatus.current}/${queueStatus.total})...` : "Test All"}
+           </button>
+           <button 
+             onClick={() => { fetchModels(); fetchHealth(); }}
              className="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground"
              title={t('models.actions.refresh')}
            >
@@ -113,7 +196,7 @@ export default function Models() {
                       <div className="text-[11px] font-bold truncate text-muted-foreground">{a.target_model}</div>
                    </div>
                    <button 
-                     onClick={() => deleteAlias(a.id)}
+                     onClick={() => setAliasToDelete({ id: a.id, name: a.alias })}
                      className="p-1 text-muted-foreground hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
                    >
                      <Trash2 size={12} />
@@ -161,20 +244,73 @@ export default function Models() {
       {/* Models Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {filteredModels.map((model) => (
-          <div key={model.id} className="p-4 rounded-xl border border-border bg-card hover:border-primary/40 transition-all group flex flex-col justify-between h-36">
+          <div key={model.id} className="p-4 rounded-xl border border-border bg-card hover:border-primary/40 transition-all group flex flex-col justify-between min-h-[160px]">
             <div className="space-y-1">
               <div className="flex items-center justify-between">
                 <span className="text-[9px] font-black text-primary uppercase tracking-widest">{model.owned_by}</span>
-                <LayoutGrid size={12} className="text-muted-foreground/30" />
+                <div className="flex items-center gap-1.5">
+                   {testResults[model.id]?.loading ? (
+                     <RefreshCcw size={10} className="animate-spin text-muted-foreground" />
+                   ) : testResults[model.id] ? (
+                     <div className={cn(
+                       "w-1.5 h-1.5 rounded-full",
+                       testResults[model.id]?.success ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" : "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]"
+                     )} title={testResults[model.id]?.error} />
+                   ) : null}
+                   <LayoutGrid size={12} className="text-muted-foreground/30" />
+                </div>
               </div>
               <h3 className="font-bold text-sm tracking-tight line-clamp-2 leading-snug">{model.id}</h3>
+              <div className="flex items-center gap-2">
+                {testResults[model.id]?.latency && (
+                  <span className="text-[10px] text-green-600 font-bold">{testResults[model.id]?.latency}ms</span>
+                )}
+                {testResults[model.id]?.lastChecked && (
+                  <span className="text-[9px] text-muted-foreground/60 font-medium">
+                    {new Date(testResults[model.id]!.lastChecked!).toLocaleString(undefined, { 
+                      month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
+                    })}
+                  </span>
+                )}
+              </div>
+              {testResults[model.id]?.error && (
+                <p className="text-[9px] text-red-500 font-medium line-clamp-1 opacity-80" title={testResults[model.id]?.error}>{testResults[model.id]?.error}</p>
+              )}
+              {/* 限额进度条：只有厂商返回了 ratelimit 数据才显示 */}
+              {(() => {
+                const limits = testResults[model.id]?.limitsCache;
+                if (!limits) return null;
+                const remaining = parseInt(limits['x-ratelimit-remaining-tokens'] ?? limits['x-quota-remaining'] ?? -1);
+                const total = parseInt(limits['x-ratelimit-limit-tokens'] ?? limits['x-quota-total'] ?? -1);
+                if (remaining < 0 || total <= 0) return null;
+                const pct = Math.max(0, Math.min(100, (remaining / total) * 100));
+                const color = pct > 50 ? 'bg-green-500' : pct > 15 ? 'bg-amber-500' : 'bg-red-500';
+                return (
+                  <div className="mt-1.5 space-y-0.5">
+                    <div className="flex justify-between text-[9px] text-muted-foreground">
+                      <span>Tokens</span>
+                      <span>{remaining.toLocaleString()} / {total.toLocaleString()}</span>
+                    </div>
+                    <div className="h-1 w-full rounded-full bg-muted/50 overflow-hidden">
+                      <div
+                        className={cn("h-full rounded-full transition-all duration-700", color)}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
             
-            <div className="pt-3 border-t border-border/40 flex items-center justify-between text-[10px] font-bold text-muted-foreground uppercase tracking-tighter">
-               <div className="flex items-center gap-1.5 opacity-60">
-                  <Database size={12} />
-                  Context: 128k
-               </div>
+            <div className="pt-3 mt-3 border-t border-border/40 flex items-center justify-between text-[10px] font-bold text-muted-foreground uppercase tracking-tighter">
+               <button 
+                 onClick={() => handleTest(model.id, model.owned_by)}
+                 disabled={testResults[model.id]?.loading || queueStatus.isRunning}
+                 className="flex items-center gap-1 hover:text-foreground transition-colors disabled:opacity-50"
+               >
+                 <Zap size={12} className={cn(testResults[model.id]?.success && "text-amber-500")} />
+                 {testResults[model.id]?.loading ? "Testing..." : "Test"}
+               </button>
                <button 
                  onClick={() => {
                     setAliasForm({ alias: '', target: model.id, provider: model.owned_by });
@@ -200,11 +336,11 @@ export default function Models() {
       )}
 
       {/* Add Alias Modal */}
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={t('models.createAlias')}>
+      <Dialog isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={t('models.createAlias')}>
         <form onSubmit={handleAddAlias} className="space-y-4">
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-muted-foreground uppercase">{t('models.aliasName')}</label>
-            <input 
+            <input
               type="text" required value={aliasForm.alias}
               onChange={e => setAliasForm({...aliasForm, alias: e.target.value})}
               placeholder={t('models.aliasPlaceholder')}
@@ -213,7 +349,7 @@ export default function Models() {
           </div>
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-muted-foreground uppercase">{t('models.targetModel')}</label>
-            <select 
+            <select
               value={aliasForm.target}
               onChange={e => {
                 const m = availableModels.find(x => x.id === e.target.value);
@@ -234,7 +370,32 @@ export default function Models() {
              </button>
           </div>
         </form>
-      </Modal>
+      </Dialog>
+
+      <ConfirmDialog
+        isOpen={testAllConfirm}
+        onClose={() => setTestAllConfirm(false)}
+        onConfirm={executeTestAll}
+        title="Test All Models"
+        description={t('models.testAllConfirm', '即将把当前筛选出的这批模型发送至后台队列顺序拨测。\n\n⚠️注意：测试将真实调用模型接口发出一句简单的问候，每次将消耗约 1 Token 左右的资源。\n如果在执行期间离开此页面，后台测试依然会继续直至完成。是否继续？')}
+        confirmText="Start Testing"
+        variant="warning"
+      />
+
+      <ConfirmDialog
+        isOpen={!!aliasToDelete}
+        onClose={() => setAliasToDelete(null)}
+        onConfirm={async () => {
+          if (aliasToDelete) {
+            await deleteAlias(aliasToDelete.id);
+            setAliasToDelete(null);
+          }
+        }}
+        title={t('common.delete')}
+        description={t('models.deleteConfirm', { name: aliasToDelete?.name })}
+        confirmText={t('common.delete')}
+        variant="danger"
+      />
     </div>
   );
 }

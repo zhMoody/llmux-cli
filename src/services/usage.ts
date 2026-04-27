@@ -9,6 +9,7 @@ export interface UsageLogParams {
   latencyMs: number;
   success: boolean;
   errorMessage?: string;
+  limitCache?: any;
 }
 
 export class UsageService {
@@ -31,6 +32,13 @@ export class UsageService {
         params.success ? 1 : 0,
         params.errorMessage || null
       ]);
+
+      if (params.limitCache) {
+        db.run(`UPDATE accounts SET limits_cache = ? WHERE id = ?`, [
+          JSON.stringify(params.limitCache),
+          params.accountId
+        ]);
+      }
     } catch (err) {
       console.error("[UsageService] Failed to insert usage log:", err);
     }

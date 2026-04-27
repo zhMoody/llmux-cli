@@ -17,6 +17,7 @@ interface AccountsState {
   error: string | null;
   fetchAccounts: () => Promise<void>;
   addAccount: (account: { alias: string; provider_id: string; api_key: string; base_url?: string }) => Promise<void>;
+  updateAccount: (id: number, account: { alias?: string; provider_id?: string; api_key?: string; base_url?: string; notes?: string }) => Promise<void>;
   deleteAccount: (id: number) => Promise<void>;
   toggleActive: (id: number, currentStatus: number) => Promise<void>;
 }
@@ -48,6 +49,24 @@ export const useAccountsStore = create<AccountsState>((set, get) => ({
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.error || 'Failed to add account');
+      }
+      await get().fetchAccounts();
+    } catch (err: any) {
+      set({ error: err.message });
+      throw err;
+    }
+  },
+
+  updateAccount: async (id, account) => {
+    try {
+      const res = await fetch(`/api/accounts/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(account),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to update account');
       }
       await get().fetchAccounts();
     } catch (err: any) {

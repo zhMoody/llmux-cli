@@ -144,16 +144,25 @@ export default function Dashboard() {
                 <div key={v.id} className="p-4 rounded-xl border border-border/60 bg-card hover:bg-muted/30 transition-all flex items-center justify-between">
                    <div className="flex items-center gap-3">
                       <div className={cn(
-                        "w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold uppercase",
-                        v.status === 'healthy' ? "bg-green-500/10 text-green-600" : "bg-red-500/10 text-red-600"
+                        "w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold uppercase shrink-0",
+                        v.status === 'healthy' && "bg-green-500/10 text-green-600",
+                        v.status === 'degraded' && "bg-amber-500/10 text-amber-600",
+                        v.status === 'down' && "bg-red-500/10 text-red-600",
+                        v.status === 'unknown' && "bg-muted text-muted-foreground"
                       )}>
-                         {v.id.slice(0, 2)}
+                         {(v.name || v.id).slice(0, 2)}
                       </div>
                       <div>
-                         <div className="text-sm font-semibold capitalize">{v.id}</div>
+                         <div className="text-sm font-semibold capitalize truncate max-w-[120px]">{v.name || v.id}</div>
                          <div className="text-[10px] text-muted-foreground flex items-center gap-1">
-                           <div className={cn("w-1 h-1 rounded-full", v.status === 'healthy' ? "bg-green-500" : "bg-red-500")} />
-                           {v.status}
+                           <div className={cn(
+                             "w-1 h-1 rounded-full",
+                             v.status === 'healthy' && "bg-green-500",
+                             v.status === 'degraded' && "bg-amber-500",
+                             v.status === 'down' && "bg-red-500",
+                             v.status === 'unknown' && "bg-muted-foreground/30"
+                           )} />
+                           {v.status === 'unknown' ? 'No traffic' : v.status}
                          </div>
                       </div>
                    </div>

@@ -61,7 +61,7 @@ export class CustomAdapter implements Adapter {
         id: m.id,
         object: "model",
         created: m.created || Date.now(),
-        owned_by: account.provider_id || "custom"
+        owned_by: account.alias
       }));
 
       console.log(`[Custom Adapter] ${account.alias} successfully listed ${models.length} models.`);

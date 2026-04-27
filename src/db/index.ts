@@ -23,5 +23,16 @@ export function initDb() {
     db.run(INIT_TABLES);
     db.run(SEED_DATA);
   })();
+
+  // 运行可能需要的迁移
+  try {
+    db.run("ALTER TABLE accounts ADD COLUMN limits_cache TEXT;");
+  } catch (e: any) {
+    // 忽略 "duplicate column name" 错误
+    if (!e.message.includes("duplicate column name")) {
+      console.error("[DB Migration Error]", e.message);
+    }
+  }
+
   console.log(`[DB] Database initialized at: ${DATABASE_PATH}`);
 }
