@@ -13,6 +13,8 @@
     "status": "系统状态",
     "actions": "操作",
     "loading": "加载中...",
+    "pleaseType": "请输入",
+    "toConfirm": "以确认操作",
     "active": "已启用",
     "disabled": "已禁用",
     "enable": "启用",
@@ -53,7 +55,8 @@
     "connectNew": "快速连接",
     "noTraffic": "暂无流量",
     "calls": "次调用",
-    "noActivity": "近期无活动记录"
+    "noActivity": "近期无活动记录",
+    "noDataTrend": "开启测试或接入客户端开始采集数据..."
   },
   "usage": {
     "title": "用量统计",

@@ -74,12 +74,9 @@ export default function Settings() {
       const res = await fetch('/api/settings/reset', { method: 'POST' });
       if (res.ok) {
         window.location.href = '/'; 
-      } else {
-        alert('Reset failed');
       }
     } catch (err) {
       console.error('Purge failed:', err);
-      alert('Network error');
     } finally {
       setIsPurging(false);
     }
@@ -172,6 +169,7 @@ export default function Settings() {
         cancelText={t('common.cancel')}
         variant="danger"
         size="md"
+        requireInput="reset"
         isLoading={isPurging}
       />
     </div>

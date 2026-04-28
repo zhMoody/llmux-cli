@@ -145,7 +145,8 @@ export class Dispatcher {
             outputTokens: 0,
             latencyMs: latency,
             success: false,
-            errorMessage: errorMsg
+            errorMessage: errorMsg,
+            isTest: request.is_test
           });
 
           lastResponse = response;
@@ -158,7 +159,7 @@ export class Dispatcher {
 
         // 如果是非流式响应，我们尝试解析 Token 数量（通过克隆响应体避免干扰后续流程）
         if (!request.stream) {
-          this.logNonStreamUsage(response.clone(), account.id, account.provider_id, targetModel, latency);
+          this.logNonStreamUsage(response.clone(), account.id, account.provider_id, targetModel, latency, request.is_test);
         } else {
           // 流式响应目前简单记录
           usageService.logUsage({
@@ -169,7 +170,8 @@ export class Dispatcher {
             outputTokens: 0,
             latencyMs: latency,
             success: true,
-            limitCache: this.getLimitCacheFromHeaders(response.headers)
+            limitCache: this.getLimitCacheFromHeaders(response.headers),
+            isTest: request.is_test
           });
         }
 
@@ -187,7 +189,8 @@ export class Dispatcher {
           outputTokens: 0,
           latencyMs: latency,
           success: false,
-          errorMessage: err.message
+          errorMessage: err.message,
+          isTest: request.is_test
         });
 
         attempts++;
@@ -215,7 +218,7 @@ export class Dispatcher {
   /**
    * 异步解析并记录非流式响应的用量
    */
-  private async logNonStreamUsage(response: Response, accountId: number, providerId: string, model: string, latency: number) {
+  private async logNonStreamUsage(response: Response, accountId: number, providerId: string, model: string, latency: number, isTest?: boolean) {
     try {
       const data = await response.json() as any;
       usageService.logUsage({
@@ -226,7 +229,8 @@ export class Dispatcher {
         outputTokens: data.usage?.completion_tokens || 0,
         latencyMs: latency,
         success: true,
-        limitCache: this.getLimitCacheFromHeaders(response.headers)
+        limitCache: this.getLimitCacheFromHeaders(response.headers),
+        isTest
       });
     } catch (e) {
       // 解析失败不影响主流程

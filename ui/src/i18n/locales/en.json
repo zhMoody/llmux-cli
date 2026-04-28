@@ -13,6 +13,8 @@
     "status": "System Status",
     "actions": "Actions",
     "loading": "Loading...",
+    "pleaseType": "Please type",
+    "toConfirm": "to confirm",
     "active": "Active",
     "disabled": "Disabled",
     "enable": "Enable",
@@ -53,7 +55,8 @@
     "connectNew": "Connect New",
     "noTraffic": "No traffic",
     "calls": "Calls",
-    "noActivity": "No activity yet"
+    "noActivity": "No activity yet",
+    "noDataTrend": "Start testing or connect a client to begin collecting data..."
   },
   "usage": {
     "title": "Usage Statistics",

@@ -1,6 +1,7 @@
 import React, { useEffect, useCallback } from 'react';
 import { X, AlertTriangle, Info, CheckCircle2, AlertCircle } from 'lucide-react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 
 // ——————————————————————————————————————————
 // 工具函数
@@ -162,6 +163,7 @@ interface ConfirmDialogProps {
   variant?: 'danger' | 'warning' | 'info' | 'success';
   isLoading?: boolean;
   size?: DialogSize;
+  requireInput?: string;
 }
 
 export function ConfirmDialog({
@@ -175,13 +177,24 @@ export function ConfirmDialog({
   variant = 'warning',
   isLoading = false,
   size = 'sm',
+  requireInput,
 }: ConfirmDialogProps) {
+  const { t } = useTranslation();
+  const [inputValue, setInputValue] = React.useState('');
+
+  // Reset input when modal opens/closes
+  React.useEffect(() => {
+    if (!isOpen) setInputValue('');
+  }, [isOpen]);
+
   const confirmColor = {
     danger:  'bg-red-500 text-white hover:bg-red-600',
     warning: 'bg-amber-500 text-white hover:bg-amber-600',
     info:    'bg-blue-500 text-white hover:bg-blue-600',
     success: 'bg-green-500 text-white hover:bg-green-600',
   }[variant];
+
+  const isConfirmDisabled = isLoading || (requireInput ? inputValue !== requireInput : false);
 
   return (
     <Dialog
@@ -204,7 +217,7 @@ export function ConfirmDialog({
           </button>
           <button
             onClick={onConfirm}
-            disabled={isLoading}
+            disabled={isConfirmDisabled}
             className={cn('px-4 py-2 text-sm font-bold rounded-lg transition-all disabled:opacity-60 flex items-center gap-2', confirmColor)}
           >
             {isLoading && (
@@ -214,7 +227,24 @@ export function ConfirmDialog({
           </button>
         </>
       }
-    />
+    >
+      {requireInput && (
+        <div className="mt-4 pt-4 border-t border-border/50">
+          <label className="block text-xs font-bold text-muted-foreground mb-2">
+            {t('common.pleaseType')} <span className="text-foreground bg-muted px-1.5 py-0.5 rounded select-all">{requireInput}</span> {t('common.toConfirm')}
+          </label>
+          <input
+            type="text"
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            disabled={isLoading}
+            className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+            placeholder={requireInput}
+            autoComplete="off"
+          />
+        </div>
+      )}
+    </Dialog>
   );
 }
 

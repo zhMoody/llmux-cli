@@ -10,6 +10,7 @@ export interface UsageLogParams {
   success: boolean;
   errorMessage?: string;
   limitCache?: any;
+  isTest?: boolean;
 }
 
 export class UsageService {
@@ -18,20 +19,22 @@ export class UsageService {
    */
   logUsage(params: UsageLogParams) {
     try {
-      db.run(`
-        INSERT INTO usage_logs (
-          account_id, provider_id, model, input_tokens, output_tokens, latency_ms, success, error_message
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `, [
-        params.accountId,
-        params.providerId,
-        params.model,
-        params.inputTokens,
-        params.outputTokens,
-        params.latencyMs,
-        params.success ? 1 : 0,
-        params.errorMessage || null
-      ]);
+      if (!params.isTest) {
+        db.run(`
+          INSERT INTO usage_logs (
+            account_id, provider_id, model, input_tokens, output_tokens, latency_ms, success, error_message
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `, [
+          params.accountId,
+          params.providerId,
+          params.model,
+          params.inputTokens,
+          params.outputTokens,
+          params.latencyMs,
+          params.success ? 1 : 0,
+          params.errorMessage || null
+        ]);
+      }
 
       if (params.limitCache) {
         db.run(`UPDATE accounts SET limits_cache = ? WHERE id = ?`, [

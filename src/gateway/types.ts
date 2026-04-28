@@ -33,6 +33,7 @@ export interface ChatRequest {
   seed?: number;
   tools?: any[];
   tool_choice?: any;
+  is_test?: boolean;
 }
 
 /**

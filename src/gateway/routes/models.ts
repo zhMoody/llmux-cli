@@ -82,7 +82,8 @@ export async function testModel(req: Request) {
       model: model,
       messages: [{ role: "user", content: "hey" }],
       max_tokens: 1,
-      stream: false
+      stream: false,
+      is_test: true
     }, providerId);
 
     const latency = Date.now() - startTime;
@@ -187,7 +188,8 @@ async function processQueue() {
         model: item.model,
         messages: [{ role: "user", content: "hey" }],
         max_tokens: 1,
-        stream: false
+        stream: false,
+        is_test: true
       }, item.providerId);
     } catch (e) {
       console.warn(`[Test Queue] Failed for ${item.model}:`, e);
