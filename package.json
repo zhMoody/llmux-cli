@@ -1,6 +1,6 @@
 {
   "name": "llmux-cli",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "LLM + mux (multiplexer), local AI API aggregation tool.",
   "type": "module",
   "main": "src/cli/index.ts",
@@ -12,7 +12,7 @@
     "start": "bun run src/cli/index.ts start",
     "test": "bun test",
     "release": "bun run build.ts",
-    "prepublishOnly": "cd ui && bun install && bun run build && cd .. && bun run pack-assets.ts",
+    "prepack": "cd ui && bun install && bun run build && cd .. && bun run pack-assets.ts && bun run release",
     "postinstall": "node scripts/install.js"
   },
   "keywords": [

@@ -29,9 +29,6 @@ jobs:
           npm install -g npm@latest
           bun install
 
-      - name: Build cross-platform binaries
-        run: bun run release
-
       - name: Publish to npm
         run: |
           npm config set //registry.npmjs.org/:_authToken ""
