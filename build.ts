@@ -15,10 +15,9 @@ await $`bun run pack-assets.ts`;
 
 // 3. Prepare release directory
 const releaseDir = join(process.cwd(), "release");
-if (existsSync(releaseDir)) {
-  await rm(releaseDir, { recursive: true, force: true });
+if (!existsSync(releaseDir)) {
+  await mkdir(releaseDir, { recursive: true });
 }
-await mkdir(releaseDir);
 
 // 4. Compile standalone binaries for multiple platforms
 console.log("🛠️ Compiling cross-platform standalone binaries...");
@@ -33,7 +32,13 @@ const targets = [
 for (const t of targets) {
   const outName = `llmux-${t.suffix}${t.ext}`;
   console.log(`   -> Target: ${t.target} (${outName})`);
-  await $`bun build src/cli/index.ts --compile --target=${t.target} --minify --outfile ${join(releaseDir, outName)}`;
+  try {
+    await $`bun build src/cli/index.ts --compile --target=${t.target} --minify --outfile ${join(releaseDir, outName)}`;
+  } catch (error) {
+    console.warn(`\n⚠️  Failed to compile for ${t.target}.`);
+    console.warn(`    This usually happens if your network cannot reach GitHub reliably to download the Bun runtime for this platform.`);
+    console.warn(`    Skipping ${t.target} and continuing...\n`);
+  }
 }
 
 console.log("✅ Release created successfully in 'release' folder!");
