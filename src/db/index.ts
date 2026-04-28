@@ -28,9 +28,16 @@ export function initDb() {
   try {
     db.run("ALTER TABLE accounts ADD COLUMN limits_cache TEXT;");
   } catch (e: any) {
-    // 忽略 "duplicate column name" 错误
     if (!e.message.includes("duplicate column name")) {
-      console.error("[DB Migration Error]", e.message);
+      console.error("[DB Migration Error: accounts]", e.message);
+    }
+  }
+
+  try {
+    db.run("ALTER TABLE usage_logs ADD COLUMN is_test INTEGER DEFAULT 0;");
+  } catch (e: any) {
+    if (!e.message.includes("duplicate column name")) {
+      console.error("[DB Migration Error: usage_logs]", e.message);
     }
   }
 

@@ -1,0 +1,10 @@
+# Ignore UI source folder (assets are packed into src/gateway/assets.ts)
+ui/
+build.ts
+pack-assets.ts
+release/
+tests/
+.env*
+.github/
+**/*.test.ts
+**/*.spec.ts

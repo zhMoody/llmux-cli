@@ -82,9 +82,16 @@ export default function Dashboard() {
   const modelChartData = useMemo(() => {
     if (!recentLogs.length || !top5ModelNames.length) return [];
     
-    const sortedLogs = [...recentLogs].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-    const minTime = new Date(sortedLogs[0].timestamp).getTime();
-    const maxTime = new Date(sortedLogs[sortedLogs.length - 1].timestamp).getTime();
+    // SQLite 默认的 CURRENT_TIMESTAMP 返回不带 Z 的 UTC 字符串，需要手动修补成合法 ISO 格式供 JS 解析
+    const parseSqliteTime = (ts: string) => {
+      if (!ts) return 0;
+      if (ts.includes('T')) return new Date(ts).getTime();
+      return new Date(ts.replace(' ', 'T') + 'Z').getTime();
+    };
+
+    const sortedLogs = [...recentLogs].sort((a, b) => parseSqliteTime(a.timestamp) - parseSqliteTime(b.timestamp));
+    const minTime = parseSqliteTime(sortedLogs[0].timestamp);
+    const maxTime = parseSqliteTime(sortedLogs[sortedLogs.length - 1].timestamp);
     const timeSpan = maxTime - minTime;
     
     // 动态增加采样率：如果是短时间监控，提高密度以减少插值的虚假性 (最多 60 个桶)
@@ -114,7 +121,7 @@ export default function Dashboard() {
       const modelName = log.model;
       if (!top5ModelNames.includes(modelName)) return;
       
-      const logTime = new Date(log.timestamp).getTime();
+      const logTime = parseSqliteTime(log.timestamp);
       const bucketIndex = Math.min(Math.floor((logTime - minTime) / bucketDuration), bucketCount) + 1;
       
       if (buckets[bucketIndex]) {

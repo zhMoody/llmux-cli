@@ -1,6 +1,6 @@
-import { join } from "node:path";
 import { env } from "../env.js";
 import { dispatcher } from "../services/dispatcher.js";
+import { ASSETS } from "./assets.js";
 import { createAccount, deleteAccount, listAccounts, updateAccount } from "./routes/accounts.js";
 import { handleWebSession } from "./routes/auth.js";
 import { handleChatRoute } from "./routes/chat.js";
@@ -9,7 +9,7 @@ import { checkAuth, createApiKey, deleteApiKey, listApiKeys } from "./routes/key
 import { deleteModelAlias, getAvailableModels, getModelAliases, setModelAlias } from "./routes/models.js";
 import { getSettings, purgeDatabase, updateSettings } from "./routes/settings.js";
 import { getUsageDetails, getUsageSummary } from "./routes/usage.js";
-
+ 
 /**
  * 启动 HTTP Gateway
  */
@@ -143,8 +143,7 @@ export function startGateway() {
         return purgeDatabase();
       }
 
-      // 2. 静态文件托管 (Web UI)
-      const publicDir = join(import.meta.dir, "../ui/dist");
+      // 2. 静态文件托管 (Web UI，全量内嵌)
       let filePath = url.pathname;
       
       // 路由重定向：/ 或 /ui 映射到 index.html
@@ -157,16 +156,30 @@ export function startGateway() {
         filePath = filePath.substring(3);
       }
 
-      const file = Bun.file(join(publicDir, filePath));
-      if (await file.exists()) {
-        return new Response(file);
+      const getMimeType = (path: string) => {
+        if (path.endsWith(".html")) return "text/html; charset=utf-8";
+        if (path.endsWith(".css")) return "text/css; charset=utf-8";
+        if (path.endsWith(".js") || path.endsWith(".mjs")) return "application/javascript; charset=utf-8";
+        if (path.endsWith(".svg")) return "image/svg+xml";
+        if (path.endsWith(".json")) return "application/json; charset=utf-8";
+        if (path.endsWith(".png")) return "image/png";
+        if (path.endsWith(".jpg") || path.endsWith(".jpeg")) return "image/jpeg";
+        return "application/octet-stream";
+      };
+
+      if (ASSETS[filePath]) {
+        const buffer = Buffer.from(ASSETS[filePath], "base64");
+        return new Response(buffer, {
+          headers: { "Content-Type": getMimeType(filePath) }
+        });
       }
 
-      // 默认响应 (SPA 回退)
-      if (!url.pathname.startsWith("/v1/")) {
-        const indexFile = Bun.file(join(publicDir, "index.html"));
-        if (await indexFile.exists()) {
-          return new Response(indexFile);
+      // SPA 回退
+      if (!url.pathname.startsWith("/v1/") && !url.pathname.startsWith("/api/")) {
+        if (ASSETS["/index.html"]) {
+          return new Response(Buffer.from(ASSETS["/index.html"], "base64"), {
+            headers: { "Content-Type": "text/html; charset=utf-8" }
+          });
         }
       }
 

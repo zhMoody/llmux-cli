@@ -161,18 +161,8 @@ export class Dispatcher {
         if (!request.stream) {
           this.logNonStreamUsage(response.clone(), account.id, account.provider_id, targetModel, latency, request.is_test);
         } else {
-          // 流式响应目前简单记录
-          usageService.logUsage({
-            accountId: account.id,
-            providerId: account.provider_id,
-            model: targetModel,
-            inputTokens: 0,
-            outputTokens: 0,
-            latencyMs: latency,
-            success: true,
-            limitCache: this.getLimitCacheFromHeaders(response.headers),
-            isTest: request.is_test
-          });
+          // 流式响应异步追踪并在结束时尝试解析最终的 usage 块
+          this.logStreamUsage(response.clone(), account.id, account.provider_id, targetModel, latency, request);
         }
 
         return response;
@@ -223,7 +213,7 @@ export class Dispatcher {
       const data = await response.json() as any;
       usageService.logUsage({
         accountId,
-        providerId: providerId, // This one is passed to the function, but wait...
+        providerId,
         model,
         inputTokens: data.usage?.prompt_tokens || 0,
         outputTokens: data.usage?.completion_tokens || 0,
@@ -234,6 +224,70 @@ export class Dispatcher {
       });
     } catch (e) {
       // 解析失败不影响主流程
+    }
+  }
+
+  /**
+   * 异步解析并记录流式响应的用量（拦截 usage 分块或使用估算值）
+   */
+  private async logStreamUsage(response: Response, accountId: number, providerId: string, model: string, latency: number, request: any) {
+    let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+    try {
+      if (!response.body) return;
+      reader = response.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      
+      let chunkCount = 0;
+      let promptTokens = 0;
+      let completionTokens = 0;
+      let hasUsage = false;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        chunkCount++;
+        const chunkText = decoder.decode(value, { stream: true });
+        
+        if (chunkText.includes('"usage"')) {
+          const lines = chunkText.split('\\n');
+          for (const line of lines) {
+            if (line.startsWith('data: ') && !line.includes('[DONE]')) {
+              try {
+                const data = JSON.parse(line.slice(6));
+                if (data.usage) {
+                  promptTokens = data.usage.prompt_tokens || promptTokens;
+                  completionTokens = data.usage.completion_tokens || completionTokens;
+                  hasUsage = true;
+                }
+              } catch(e) {}
+            }
+          }
+        }
+      }
+
+      // 如果未找到明确的用法统计，使用保守的回退估算法（1 chunk 约 1.2 token，输入按字符数/4估算）
+      if (!hasUsage) {
+        const inputChars = JSON.stringify(request.messages || []).length;
+        promptTokens = Math.ceil(inputChars / 4);
+        completionTokens = chunkCount > 1 ? Math.floor(chunkCount * 1.2) : 1;
+      }
+
+      usageService.logUsage({
+        accountId,
+        providerId,
+        model,
+        inputTokens: promptTokens,
+        outputTokens: completionTokens,
+        latencyMs: latency,
+        success: true,
+        limitCache: this.getLimitCacheFromHeaders(response.headers),
+        isTest: request.is_test
+      });
+    } catch (e) {
+      // 流读取可能因客户端中断而报错，此时仍尽可能记录一部分用量
+    } finally {
+      if (reader) reader.releaseLock();
     }
   }
 

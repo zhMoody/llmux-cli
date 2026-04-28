@@ -26,6 +26,11 @@ cli
   });
 
 cli.help();
-cli.version("0.1.0");
+cli.version("1.0.0");
+
+// 如果没有传入任何命令（例如双击exe运行），默认执行 start 命令
+if (process.argv.length === 2) {
+  process.argv.push("start");
+}
 
 cli.parse();

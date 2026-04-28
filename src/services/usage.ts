@@ -19,22 +19,21 @@ export class UsageService {
    */
   logUsage(params: UsageLogParams) {
     try {
-      if (!params.isTest) {
-        db.run(`
-          INSERT INTO usage_logs (
-            account_id, provider_id, model, input_tokens, output_tokens, latency_ms, success, error_message
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `, [
-          params.accountId,
-          params.providerId,
-          params.model,
-          params.inputTokens,
-          params.outputTokens,
-          params.latencyMs,
-          params.success ? 1 : 0,
-          params.errorMessage || null
-        ]);
-      }
+      db.run(`
+        INSERT INTO usage_logs (
+          account_id, provider_id, model, input_tokens, output_tokens, latency_ms, success, error_message, is_test
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        params.accountId,
+        params.providerId,
+        params.model,
+        params.inputTokens,
+        params.outputTokens,
+        params.latencyMs,
+        params.success ? 1 : 0,
+        params.errorMessage || null,
+        params.isTest ? 1 : 0
+      ]);
 
       if (params.limitCache) {
         db.run(`UPDATE accounts SET limits_cache = ? WHERE id = ?`, [
@@ -48,10 +47,10 @@ export class UsageService {
   }
 
   /**
-   * 获取最近的用量记录
+   * 获取最近的用量记录 (排除纯后台测试记录，除非用于 Dashboard 纯趋势展示也可能不需要)
    */
   getRecentLogs(limit: number = 20) {
-    const stmt = db.query("SELECT * FROM usage_logs ORDER BY timestamp DESC LIMIT ?");
+    const stmt = db.query("SELECT * FROM usage_logs WHERE is_test = 0 ORDER BY timestamp DESC LIMIT ?");
     return stmt.all(limit);
   }
 
@@ -67,6 +66,7 @@ export class UsageService {
         COUNT(*) as totalRequests,
         IFNULL(SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END), 0) as successRequests
       FROM usage_logs
+      WHERE is_test = 0
     `);
     return stmt.get();
   }
@@ -81,6 +81,7 @@ export class UsageService {
         SUM(input_tokens + output_tokens) as totalTokens,
         COUNT(*) as requests
       FROM usage_logs 
+      WHERE is_test = 0
       GROUP BY provider_id
     `);
     return stmt.all();
@@ -97,6 +98,7 @@ export class UsageService {
         SUM(output_tokens) as output,
         COUNT(*) as requests
       FROM usage_logs
+      WHERE is_test = 0
       GROUP BY model
       ORDER BY (input + output) DESC
     `);
@@ -114,6 +116,7 @@ export class UsageService {
         COUNT(*) as requests
       FROM usage_logs l
       JOIN accounts a ON l.account_id = a.id
+      WHERE l.is_test = 0
       GROUP BY a.id, a.alias
     `);
     return stmt.all();

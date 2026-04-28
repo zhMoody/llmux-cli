@@ -49,7 +49,8 @@ CREATE TABLE IF NOT EXISTS usage_logs (
   output_tokens INTEGER,
   latency_ms INTEGER,
   success INTEGER,
-  error_message TEXT
+  error_message TEXT,
+  is_test INTEGER DEFAULT 0
 );
 
 -- 应用设置
