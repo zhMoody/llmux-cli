@@ -3,6 +3,7 @@
     "dashboard": "Dashboard",
     "accounts": "Accounts",
     "models": "Models",
+    "keys": "API Keys",
     "usage": "Usage",
     "settings": "Settings",
     "about": "About",
@@ -22,7 +23,13 @@
     "menuPref": "Preference",
     "systemNormal": "All Systems Normal",
     "adminMode": "Admin Mode",
-    "default": "Default"
+    "default": "Default",
+    "saved": "Saved",
+    "done": "Done",
+    "portal": "Gateway Management Portal",
+    "healthy": "Healthy",
+    "degraded": "Degraded",
+    "down": "Down"
   },
   "dashboard": {
     "overview": "System Overview",
@@ -37,7 +44,10 @@
     "recentLogs": "Recent Logs",
     "connected": "Connected",
     "viewReports": "View Reports",
-    "connectNew": "Connect New"
+    "connectNew": "Connect New",
+    "noTraffic": "No traffic",
+    "calls": "Calls",
+    "noActivity": "No activity yet"
   },
   "usage": {
     "title": "Usage Statistics",
@@ -47,7 +57,14 @@
     "breakdown": "Service Breakdown",
     "tokens": "Tokens Consumed",
     "compare": "vs last month",
-    "downloadCsv": "Download Detailed CSV"
+    "downloadCsv": "Download Detailed CSV",
+    "input": "Input",
+    "output": "Output",
+    "day": "Day",
+    "month": "Month",
+    "noData": "No usage data found",
+    "totalTokens": "Total Tokens",
+    "totalCost": "Total Cost"
   },
   "settings": {
     "title": "System Settings",
@@ -110,7 +127,14 @@
     "noAccounts": "No accounts configured",
     "addFirst": "Click the button above to add your first AI provider key.",
     "deleteConfirm": "Are you sure you want to delete account \"{{name}}\"?",
-    "keyEncrypted": "Your keys are encrypted locally and never leave your device."
+    "keyEncrypted": "Your keys are encrypted locally and never leave your device.",
+    "offline": "Offline",
+    "leaveBlank": "Leave blank to keep current",
+    "optional": "Optional",
+    "editAccount": "Edit Account",
+    "custom": "Custom (OpenAI Compatible)",
+    "copied": "Copied!",
+    "copyScript": "Copy Script"
   },
   "models": {
     "title": "Model Management",
@@ -143,8 +167,19 @@
       "assign": "Quick Assign",
       "activeLinks": "Active Aliases",
       "noAliases": "No aliases defined",
-      "refresh": "Refresh Models"
-    }
+      "refresh": "Refresh Models",
+      "copyAlias": "Copy Alias",
+      "copyName": "Copy Model Name"
+    },
+    "testBtn": "Test",
+    "testAll": "Test All",
+    "testAllStart": "Start Testing",
+    "testAllTitle": "Test All Models",
+    "testing": "Testing...",
+    "testingQueue": "Testing ({{current}}/{{total}})...",
+    "testAllDesc": "Test all filtered models sequentially in backend",
+    "noAccountsConnected": "No accounts connected",
+    "noModelsFound": "No models found in this provider"
   },
   "auth": {
     "webLogin": "Web Session Login",
@@ -168,5 +203,21 @@
       "error": "❌ Sync error:",
       "notFound": "❌ Token not found! Ensure you are logged in."
     }
+  },
+  "keys": {
+    "createKey": "Create New Key",
+    "apiUsage": "API Usage & Base URL",
+    "apiDesc": "Integrate with any OpenAI-compatible application (like NextChat, LobeChat, etc.) by overriding the default endpoint. Use the Base URL below along with one of your API Keys.",
+    "endpoint": "Endpoint",
+    "secretKey": "Secret Key",
+    "saveThisNow": "Save this now!",
+    "revokeKey": "Revoke Key",
+    "revoke": "Revoke",
+    "noKeysYet": "No API keys generated yet.",
+    "keyCreated": "Key generated successfully! Please copy it to configure your client applications.",
+    "specificModels": "{{count}} Models",
+    "copyBase": "Copy Base URL",
+    "title": "API Key Management",
+    "subtitle": "Generate and manage client keys used to access this gateway."
   }
 }

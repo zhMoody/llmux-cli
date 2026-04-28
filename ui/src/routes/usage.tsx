@@ -48,8 +48,11 @@ export default function Usage() {
           <div className="p-2 bg-primary/10 text-primary rounded-lg">
             <BarChart3 size={24} />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">{t('common.usage')}</h1>
-        </div>
+           <div>
+             <h1 className="text-2xl font-bold tracking-tight">{t('common.usage')}</h1>
+             <p className="text-sm text-muted-foreground">{t('usage.subtitle')}</p>
+           </div>
+         </div>
         {isLoading && <Loader2 className="animate-spin text-primary/50" size={18} />}
       </div>
 
@@ -58,9 +61,9 @@ export default function Usage() {
         <div className="space-y-6">
            <div className="p-6 rounded-xl border border-blue-500/10 bg-blue-500/[0.02]">
               <div className="flex items-center gap-2 mb-4 text-blue-600">
-                 <Coins size={16} />
-                 <span className="text-xs font-bold uppercase tracking-wider">{t('usage.cost')}</span>
-              </div>
+                  <Coins size={16} />
+                  <span className="text-xs font-bold uppercase tracking-wider">{t('usage.totalCost')}</span>
+               </div>
               <div className="text-3xl font-bold tracking-tighter">
                  ${(totalTokens * 0.000002).toFixed(2)}
               </div>
@@ -94,21 +97,21 @@ export default function Usage() {
                     <Layers size={14} />
                     {t('usage.breakdown')}
                  </div>
-                 <div className="flex border border-border rounded-lg p-1 text-[10px] font-bold">
-                    <button className="px-3 py-1 bg-muted rounded-md tracking-tighter">Day</button>
-                    <button className="px-3 py-1 bg-background text-muted-foreground hover:bg-muted rounded-md transition-colors tracking-tighter">Month</button>
-                 </div>
+                  <div className="flex border border-border rounded-lg p-1 text-[10px] font-bold">
+                     <button className="px-3 py-1 bg-muted rounded-md tracking-tighter">{t('usage.day')}</button>
+                     <button className="px-3 py-1 bg-background text-muted-foreground hover:bg-muted rounded-md transition-colors tracking-tighter">{t('usage.month')}</button>
+                  </div>
               </div>
 
               <div className="space-y-1">
                  <table className="w-full text-left">
                    <thead>
-                     <tr className="text-[10px] uppercase text-muted-foreground border-b border-border/40">
-                       <th className="pb-3 font-semibold px-2">{t('common.models')}</th>
-                       <th className="pb-3 font-semibold text-right">Input</th>
-                       <th className="pb-3 font-semibold text-right">Output</th>
-                       <th className="pb-3 font-semibold text-right">Requests</th>
-                     </tr>
+                      <tr className="text-[10px] uppercase text-muted-foreground border-b border-border/40">
+                        <th className="pb-3 font-semibold px-2">{t('common.models')}</th>
+                        <th className="pb-3 font-semibold text-right">{t('usage.input')}</th>
+                        <th className="pb-3 font-semibold text-right">{t('usage.output')}</th>
+                        <th className="pb-3 font-semibold text-right">{t('dashboard.stats.requests')}</th>
+                      </tr>
                    </thead>
                    <tbody className="text-sm">
                      {breakdown?.byModel?.map((item) => (
@@ -121,11 +124,11 @@ export default function Usage() {
                      ))}
                    </tbody>
                  </table>
-                 {!breakdown?.byModel?.length && (
-                   <div className="py-20 text-center text-muted-foreground/30 text-sm italic">
-                      No usage data found
-                   </div>
-                 )}
+                   {!breakdown?.byModel?.length && (
+                    <div className="py-20 text-center text-muted-foreground/30 text-sm italic">
+                       {t('usage.noData')}
+                    </div>
+                  )}
               </div>
            </div>
         </div>

@@ -113,7 +113,7 @@ export default function Dashboard() {
         />
         <StatCard 
           icon={Zap} 
-          label="Tokens" 
+          label={t('usage.tokens')} 
           value={totalTokens > 1000000 ? `${(totalTokens/1000000).toFixed(1)}M` : `${(totalTokens/1000).toFixed(1)}K`} 
           color="text-amber-500" 
         />
@@ -162,13 +162,13 @@ export default function Dashboard() {
                              v.status === 'down' && "bg-red-500",
                              v.status === 'unknown' && "bg-muted-foreground/30"
                            )} />
-                           {v.status === 'unknown' ? 'No traffic' : v.status}
+                           {v.status === 'unknown' ? t('dashboard.noTraffic') : t(`common.${v.status}`)}
                          </div>
                       </div>
                    </div>
                    <div className="text-right">
                       <div className="text-sm font-bold">{v.totalChecks}</div>
-                      <div className="text-[9px] uppercase text-muted-foreground">Calls</div>
+                      <div className="text-[9px] uppercase text-muted-foreground">{t('dashboard.calls')}</div>
                    </div>
                 </div>
               ))}
@@ -193,7 +193,7 @@ export default function Dashboard() {
                 />
               )) : (
                 <div className="py-12 text-center text-muted-foreground/30 text-xs font-medium">
-                   No activity yet
+                   {t('dashboard.noActivity')}
                 </div>
               )}
            </div>

@@ -39,13 +39,7 @@ export async function deleteApiKey(id: string) {
  * 校验权限中间件逻辑
  */
 export function checkAuth(req: Request, requestedModel?: string): { authorized: boolean; error?: string } {
-  // 检查数据库中是否有任何 Key
-  const keyCount = db.query("SELECT COUNT(*) as count FROM api_keys").get() as { count: number };
-  
-  // 如果没有任何 Key，系统处于“初始开放模式”，允许所有请求
-  if (keyCount.count === 0) {
-    return { authorized: true };
-  }
+
 
   const authHeader = req.headers.get("Authorization");
   const providedKey = authHeader?.startsWith("Bearer ") ? authHeader.substring(7) : authHeader;

@@ -12,7 +12,8 @@ import {
   Trash2,
   LayoutGrid,
   Zap,
-  ArrowRight
+  ArrowRight,
+  Copy
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Dialog, ConfirmDialog } from '../components/Modal';
@@ -22,7 +23,7 @@ function cn(...classes: (string | undefined | null | false)[]) {
 }
 
 export default function Models() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { availableModels, aliases, isLoading, fetchModels, fetchAliases, addAlias, deleteAlias, testModel } = useModelsStore();
   const [search, setSearch] = useState('');
   const [activeProvider, setActiveProvider] = useState<string>('');
@@ -158,10 +159,10 @@ export default function Models() {
              onClick={handleTestAll}
              disabled={queueStatus.isRunning || filteredModels.length === 0}
              className="flex items-center gap-2 px-3 py-2 bg-amber-500/10 text-amber-600 rounded-lg text-sm font-medium hover:bg-amber-500/20 transition-all shadow-sm disabled:opacity-50"
-             title="Test all filtered models sequentially in backend"
+             title={t('models.testAllDesc')}
            >
              <Zap size={16} className={cn(queueStatus.isRunning && "animate-pulse")} />
-             {queueStatus.isRunning ? `Testing (${queueStatus.current}/${queueStatus.total})...` : "Test All"}
+             {queueStatus.isRunning ? t('models.testingQueue', { current: queueStatus.current, total: queueStatus.total }) : t('models.testAll')}
            </button>
            <button 
              onClick={() => { fetchModels(); fetchHealth(); }}
@@ -191,7 +192,13 @@ export default function Models() {
               {aliases.map(a => (
                 <div key={a.id} className="p-2.5 bg-card border border-border rounded-xl flex items-center justify-between group hover:border-primary/30 transition-all">
                    <div className="flex items-center gap-2 min-w-0">
-                      <div className="px-1.5 py-0.5 bg-primary/10 text-primary rounded text-[9px] font-black uppercase">{a.alias}</div>
+                      <button 
+                        onClick={() => navigator.clipboard.writeText(a.alias)} 
+                        className="px-1.5 py-0.5 bg-primary/10 text-primary rounded text-[9px] font-black uppercase flex items-center gap-1 hover:bg-primary/20 transition-colors"
+                        title={t('models.actions.copyAlias')}
+                      >
+                        {a.alias} <Copy size={8} />
+                      </button>
                       <ArrowRight size={10} className="text-muted-foreground opacity-30 shrink-0" />
                       <div className="text-[11px] font-bold truncate text-muted-foreground">{a.target_model}</div>
                    </div>
@@ -260,14 +267,23 @@ export default function Models() {
                    <LayoutGrid size={12} className="text-muted-foreground/30" />
                 </div>
               </div>
-              <h3 className="font-bold text-sm tracking-tight line-clamp-2 leading-snug">{model.id}</h3>
+              <div className="flex items-start justify-between gap-2">
+                <h3 className="font-bold text-sm tracking-tight line-clamp-2 leading-snug">{model.id}</h3>
+                <button 
+                  onClick={() => navigator.clipboard.writeText(model.id)}
+                  className="mt-0.5 text-muted-foreground/40 hover:text-primary transition-colors shrink-0"
+                  title={t('models.actions.copyName')}
+                >
+                  <Copy size={12} />
+                </button>
+              </div>
               <div className="flex items-center gap-2">
                 {testResults[model.id]?.latency && (
                   <span className="text-[10px] text-green-600 font-bold">{testResults[model.id]?.latency}ms</span>
                 )}
                 {testResults[model.id]?.lastChecked && (
                   <span className="text-[9px] text-muted-foreground/60 font-medium">
-                    {new Date(testResults[model.id]!.lastChecked!).toLocaleString(undefined, { 
+                    {new Date(testResults[model.id]!.lastChecked!).toLocaleString(i18n.language, { 
                       month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
                     })}
                   </span>
@@ -309,7 +325,7 @@ export default function Models() {
                  className="flex items-center gap-1 hover:text-foreground transition-colors disabled:opacity-50"
                >
                  <Zap size={12} className={cn(testResults[model.id]?.success && "text-amber-500")} />
-                 {testResults[model.id]?.loading ? "Testing..." : "Test"}
+                 {testResults[model.id]?.loading ? t('models.testing') : t('models.testBtn')}
                </button>
                <button 
                  onClick={() => {
@@ -330,7 +346,7 @@ export default function Models() {
       {filteredModels.length === 0 && !isLoading && (
         <div className="py-20 text-center border-2 border-dashed border-border rounded-3xl">
            <p className="text-sm text-muted-foreground font-medium italic">
-             {providers.length === 0 ? "No accounts connected" : "No models found in this provider"}
+             {providers.length === 0 ? t('models.noAccountsConnected') : t('models.noModelsFound')}
            </p>
         </div>
       )}
@@ -376,9 +392,9 @@ export default function Models() {
         isOpen={testAllConfirm}
         onClose={() => setTestAllConfirm(false)}
         onConfirm={executeTestAll}
-        title="Test All Models"
+        title={t('models.testAllTitle')}
         description={t('models.testAllConfirm', '即将把当前筛选出的这批模型发送至后台队列顺序拨测。\n\n⚠️注意：测试将真实调用模型接口发出一句简单的问候，每次将消耗约 1 Token 左右的资源。\n如果在执行期间离开此页面，后台测试依然会继续直至完成。是否继续？')}
-        confirmText="Start Testing"
+        confirmText={t('models.testAllStart')}
         variant="warning"
       />
 

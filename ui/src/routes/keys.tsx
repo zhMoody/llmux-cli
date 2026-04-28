@@ -12,7 +12,9 @@ import {
   Calendar,
   Lock,
   Eye,
-  EyeOff
+  EyeOff,
+  Terminal,
+  BookOpen
 } from 'lucide-react';
 import { Dialog, ConfirmDialog } from '../components/Modal';
 
@@ -30,6 +32,8 @@ export default function KeysPage() {
   const [newKeyData, setNewKeyData] = useState({ name: '', allowedModels: '*' as '*' | string[] });
   const [generatedKey, setGeneratedKey] = useState<string | null>(null);
   const [visibleKeys, setVisibleKeys] = useState<Record<number, boolean>>({});
+
+  const baseUrl = typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.host}/v1` : 'http://localhost:25975/v1';
 
   useEffect(() => {
     fetchKeys();
@@ -87,6 +91,31 @@ export default function KeysPage() {
         </button>
       </div>
 
+      {/* Usage Documentation */}
+      <div className="p-5 bg-card border border-border rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent pointer-events-none" />
+        <div className="space-y-1.5 relative">
+          <div className="font-bold flex items-center gap-2 text-sm">
+            <Terminal size={16} className="text-primary" />
+            {t('keys.apiUsage')}
+          </div>
+          <div className="text-xs text-muted-foreground font-medium max-w-xl leading-relaxed">
+            {t('keys.apiDesc')}
+          </div>
+        </div>
+        <div className="flex items-center gap-2 bg-muted/50 p-2 rounded-xl border border-border/50 relative">
+          <span className="text-[10px] font-black uppercase text-muted-foreground/60 border-r border-border/50 pr-2 mr-1 ml-1">{t('keys.endpoint')}</span>
+          <code className="text-sm font-mono font-bold select-all text-primary">{baseUrl}</code>
+          <button 
+            onClick={() => copyToClipboard(baseUrl)} 
+            className="p-1.5 hover:bg-background text-muted-foreground hover:text-foreground rounded transition-colors ml-1 shadow-sm border border-transparent hover:border-border"
+            title={t('keys.copyBase')}
+          >
+            <Copy size={14} />
+          </button>
+        </div>
+      </div>
+
       <div className="grid gap-4">
         {keys.map((k) => (
           <div key={k.id} className="p-5 rounded-2xl border border-border bg-card hover:border-primary/30 transition-all group relative overflow-hidden">
@@ -126,7 +155,7 @@ export default function KeysPage() {
                   <div className="flex items-center gap-1.5 justify-end">
                     <ShieldCheck size={14} className={k.allowed_models === '*' ? 'text-green-500' : 'text-blue-500'} />
                     <span className="text-xs font-bold capitalize">
-                      {k.allowed_models === '*' ? t('keys.allModels') : `${JSON.parse(k.allowed_models).length} Models`}
+                      {k.allowed_models === '*' ? t('keys.allModels') : t('keys.specificModels', { count: JSON.parse(k.allowed_models).length })}
                     </span>
                   </div>
                 </div>
@@ -146,7 +175,7 @@ export default function KeysPage() {
              <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-4 text-muted-foreground/30">
                 <Lock size={24} />
              </div>
-             <p className="text-sm text-muted-foreground font-medium">No API keys generated yet.</p>
+             <p className="text-sm text-muted-foreground font-medium">{t('keys.noKeysYet')}</p>
           </div>
         )}
       </div>
@@ -161,8 +190,8 @@ export default function KeysPage() {
           <div className="space-y-6 animate-in zoom-in-95 duration-300">
             <div className="p-4 bg-primary/5 border border-primary/10 rounded-2xl space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-primary uppercase tracking-widest">Secret Key</span>
-                <span className="text-[10px] text-amber-600 font-bold bg-amber-500/10 px-2 py-0.5 rounded">Save this now!</span>
+                <span className="text-xs font-bold text-primary uppercase tracking-widest">{t('keys.secretKey')}</span>
+                <span className="text-[10px] text-amber-600 font-bold bg-amber-500/10 px-2 py-0.5 rounded">{t('keys.saveThisNow')}</span>
               </div>
               <div className="flex items-center gap-3 bg-card p-3 rounded-xl border border-border shadow-sm">
                 <code className="text-sm font-mono flex-1 truncate">{generatedKey}</code>
@@ -178,7 +207,7 @@ export default function KeysPage() {
               onClick={() => setIsModalOpen(false)}
               className="w-full py-3 bg-muted hover:bg-muted/80 rounded-xl font-bold transition-all"
             >
-              Done
+              {t('common.done')}
             </button>
           </div>
         ) : (
@@ -285,9 +314,9 @@ export default function KeysPage() {
             setKeyToDelete(null);
           }
         }}
-        title="Revoke Key"
+        title={t('keys.revokeKey')}
         description={t('keys.deleteConfirm', { name: keyToDelete?.name })}
-        confirmText="Revoke"
+        confirmText={t('keys.revoke')}
         variant="danger"
       />
     </div>

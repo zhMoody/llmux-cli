@@ -81,7 +81,7 @@ export default function Settings() {
              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-bold shadow-sm flex items-center gap-2 disabled:opacity-50"
            >
              {isLoading ? <Loader2 size={14} className="animate-spin" /> : showSaved ? <CheckCircle2 size={14} /> : <Save size={14} />}
-             {showSaved ? "Saved" : t('settings.saveChanges')}
+             {showSaved ? t('common.saved') : t('settings.saveChanges')}
            </button>
         </div>
       </div>

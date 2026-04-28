@@ -132,7 +132,7 @@ export default function Accounts() {
                      "text-[10px] font-bold px-2 py-0.5 rounded-full",
                      acc.is_active === 1 ? "bg-green-500/10 text-green-600" : "bg-muted text-muted-foreground"
                    )}>
-                     {acc.is_active === 1 ? t('common.online') : 'Offline'}
+                     {acc.is_active === 1 ? t('common.online') : t('accounts.offline')}
                    </span>
                 </div>
                 <div className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-2 uppercase tracking-tight">
@@ -218,7 +218,7 @@ export default function Accounts() {
                   }}
                   className="w-full px-4 py-2 bg-muted/50 border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all font-semibold"
                 >
-                  <option value="custom">Custom (OpenAI Compatible)</option>
+                  <option value="custom">{t('accounts.custom')}</option>
                   <option value="openai">OpenAI</option>
                   <option value="anthropic">Anthropic</option>
                   <option value="gemini">Google Gemini</option>
@@ -238,13 +238,13 @@ export default function Accounts() {
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-bold text-muted-foreground uppercase">{t('accounts.baseUrl')}</label>
-                  <span className="text-[10px] text-muted-foreground opacity-50 font-medium italic">Optional</span>
+                  <span className="text-[10px] text-muted-foreground opacity-50 font-medium italic">{t('accounts.optional')}</span>
                 </div>
                 <input
                   type="text" value={formData.base_url}
                   onChange={e => setFormData({...formData, base_url: e.target.value})}
                   placeholder="https://api.openai.com/v1"
-                  className="w-full px-4 py-2 bg-muted/50 border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                  className="w-full px-4 py-2 bg-muted/50 border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all font-mono"
                 />
               </div>
               <div className="pt-4 flex gap-3">
@@ -284,7 +284,7 @@ export default function Accounts() {
                        className="w-full flex items-center justify-center gap-2 py-3 bg-card border border-border rounded-lg text-xs font-bold hover:bg-muted transition-all"
                      >
                        {copied ? <CheckCircle2 size={16} className="text-green-500" /> : <Copy size={16} />}
-                       {copied ? "Copied!" : t('auth.copyScript')}
+                       {copied ? t('accounts.copied') : t('auth.copyScript')}
                      </button>
                   </div>
                </div>
@@ -299,10 +299,10 @@ export default function Accounts() {
       </Dialog>
 
       {/* 编辑账户 Modal */}
-      <Dialog isOpen={isEditOpen} onClose={() => { setIsEditOpen(false); setEditingAccount(null); }} title="Edit Account">
+      <Dialog isOpen={isEditOpen} onClose={() => { setIsEditOpen(false); setEditingAccount(null); }} title={t('accounts.editAccount')}>
         <form onSubmit={handleEditSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-muted-foreground uppercase">Alias</label>
+            <label className="text-xs font-bold text-muted-foreground uppercase">{t('accounts.alias')}</label>
             <input
               type="text" required value={editData.alias}
               onChange={e => setEditData({...editData, alias: e.target.value})}
@@ -310,13 +310,13 @@ export default function Accounts() {
             />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-muted-foreground uppercase">Provider</label>
+            <label className="text-xs font-bold text-muted-foreground uppercase">{t('accounts.provider')}</label>
             <select
               value={editData.provider_id}
               onChange={e => setEditData({...editData, provider_id: e.target.value})}
               className="w-full px-4 py-2 bg-muted/50 border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all font-semibold"
             >
-              <option value="custom">Custom (OpenAI Compatible)</option>
+              <option value="custom">{t('accounts.custom')}</option>
               <option value="openai">OpenAI</option>
               <option value="anthropic">Anthropic</option>
               <option value="gemini">Google Gemini</option>
@@ -326,19 +326,19 @@ export default function Accounts() {
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-muted-foreground uppercase">API Key</label>
-              <span className="text-[10px] text-muted-foreground italic">Leave blank to keep current</span>
+              <span className="text-[10px] text-muted-foreground italic">{t('accounts.leaveBlank')}</span>
             </div>
             <input
               type="password" value={editData.api_key}
               onChange={e => setEditData({...editData, api_key: e.target.value})}
-              placeholder="Leave blank to keep current key"
+              placeholder={t('accounts.leaveBlank')}
               className="w-full px-4 py-2 bg-muted/50 border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all font-mono"
             />
           </div>
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-muted-foreground uppercase">Base URL</label>
-              <span className="text-[10px] text-muted-foreground opacity-50 italic">Optional</span>
+              <span className="text-[10px] text-muted-foreground opacity-50 italic">{t('accounts.optional')}</span>
             </div>
             <input
               type="text" value={editData.base_url}

@@ -23,7 +23,13 @@
     "menuPref": "偏好设置",
     "systemNormal": "所有系统运行正常",
     "adminMode": "管理员模式",
-    "default": "默认"
+    "default": "默认",
+    "saved": "已保存",
+    "done": "完成",
+    "portal": "网关管理门户",
+    "healthy": "健康",
+    "degraded": "部分降级",
+    "down": "故障"
   },
   "dashboard": {
     "overview": "系统概览",
@@ -38,7 +44,10 @@
     "recentLogs": "最近日志动态",
     "connected": "已连接",
     "viewReports": "查看报告",
-    "connectNew": "快速连接"
+    "connectNew": "快速连接",
+    "noTraffic": "暂无流量",
+    "calls": "次调用",
+    "noActivity": "近期无活动记录"
   },
   "usage": {
     "title": "用量统计",
@@ -48,7 +57,14 @@
     "breakdown": "服务明细",
     "tokens": "消耗代币",
     "compare": "对比上月",
-    "downloadCsv": "下载详细账单 (CSV)"
+    "downloadCsv": "下载详细账单 (CSV)",
+    "input": "输入 (Input)",
+    "output": "输出 (Output)",
+    "day": "日",
+    "month": "月",
+    "noData": "暂无使用数据",
+    "totalTokens": "总 Token 消耗",
+    "totalCost": "预估总支出"
   },
   "settings": {
     "title": "系统设置",
@@ -111,7 +127,14 @@
     "noAccounts": "暂无账户配置",
     "addFirst": "点击上方按钮添加您的第一个 AI 服务商 Key。",
     "deleteConfirm": "确定要删除账户 \"{{name}}\" 吗？",
-    "keyEncrypted": "您的 Key 已在本地加密，永远不会离开您的设备。"
+    "keyEncrypted": "您的 Key 已在本地加密，永远不会离开您的设备。",
+    "offline": "离线",
+    "leaveBlank": "留空以保持现有密钥",
+    "optional": "选填",
+    "editAccount": "编辑账户",
+    "custom": "自定义 (兼容 OpenAI)",
+    "copied": "已复制！",
+    "copyScript": "复制脚本"
   },
   "models": {
     "title": "模型管理",
@@ -144,8 +167,19 @@
       "assign": "快速关联",
       "activeLinks": "当前已关联别名",
       "noAliases": "暂无关联别名",
-      "refresh": "刷新模型库"
-    }
+      "refresh": "刷新模型库",
+      "copyAlias": "复制别名",
+      "copyName": "复制模型名称"
+    },
+    "testBtn": "拨测",
+    "testAll": "拨测全部",
+    "testAllStart": "开始拨测",
+    "testAllTitle": "拨测全部模型",
+    "testing": "拨测中...",
+    "testingQueue": "测试中 ({{current}}/{{total}})...",
+    "testAllDesc": "在后台顺序拨测当前筛选出的所有模型",
+    "noAccountsConnected": "未连接任何账户",
+    "noModelsFound": "该厂商下未找到任何模型"
   },
   "keys": {
     "title": "API 密钥管理",
@@ -156,9 +190,19 @@
     "permissions": "权限范围",
     "allModels": "所有模型",
     "selectedModels": "指定模型",
-    "keyCreated": "密钥已生成！请立即复制并妥善保存，离开后将无法再次查看完整密钥。",
+    "keyCreated": "密钥已成功生成！请立即复制并配置到您的客户端应用中。",
+    "specificModels": "{{count}} 个模型",
     "copySuccess": "已复制到剪贴板",
-    "deleteConfirm": "确定要删除密钥 \"{{name}}\" 吗？此操作不可撤销，关联的客户端将无法再访问。"
+    "deleteConfirm": "确定要删除密钥 \"{{name}}\" 吗？此操作不可撤销，关联的客户端将无法再访问。",
+    "apiUsage": "API 使用说明及可用端点",
+    "apiDesc": "可通过覆盖默认服务端点，以兼容任意基于 OpenAI 接口标准的应用（如 NextChat, LobeChat 等）。请使用下方提供的 Base URL 并配合您的任意 API Key 即可接入。",
+    "endpoint": "服务端点",
+    "secretKey": "访问密钥",
+    "saveThisNow": "请务必妥善保存此内容！",
+    "revokeKey": "删除密钥",
+    "revoke": "删除",
+    "noKeysYet": "暂未生成任何 API 密钥",
+    "copyBase": "复制 Base URL"
   },
   "auth": {
     "webLogin": "官方会话登录",
