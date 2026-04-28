@@ -29,6 +29,9 @@ jobs:
           npm install -g npm@latest
           bun install
 
+      - name: Build cross-platform binaries
+        run: bun run release
+
       - name: Publish to npm
         run: |
           npm config set //registry.npmjs.org/:_authToken ""
@@ -39,7 +42,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if [ -d "release" ]; then
-            gh release upload ${{ github.ref_name }} release/* --clobber
+            gh release upload ${{ github.event.release.tag_name }} release/* --clobber
           else
             echo "No release directory found."
           fi
