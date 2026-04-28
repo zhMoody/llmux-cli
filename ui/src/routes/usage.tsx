@@ -42,7 +42,7 @@ export default function Usage() {
   const totalTokens = (summary?.totalInput || 0) + (summary?.totalOutput || 0);
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500">
+    <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-primary/10 text-primary rounded-lg">

@@ -14,7 +14,10 @@ import {
   Monitor,
   Copy,
   CheckCircle2,
-  Pencil
+  Pencil,
+  Download,
+  ShieldAlert,
+  Power
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Dialog, ConfirmDialog } from '../components/Modal';
@@ -91,8 +94,29 @@ export default function Accounts() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleExport = async (id?: number, alias?: string) => {
+    const targetId = id || accountToDelete?.id;
+    const targetName = alias || accountToDelete?.name;
+    if (!targetId) return;
+    
+    try {
+      const res = await fetch(`/api/accounts/${targetId}/export`);
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `usage_history_${targetName || targetId}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Export failed:', err);
+    }
+  };
+
   return (
-    <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500">
+    <div className="space-y-10 animate-in fade-in duration-500">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-primary/10 text-primary rounded-lg">
@@ -144,25 +168,38 @@ export default function Accounts() {
             </div>
 
               <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                 <button 
-                   onClick={() => openEdit(acc)}
-                   className="p-2 hover:bg-primary/10 hover:text-primary rounded-lg text-muted-foreground transition-colors"
-                   title="Edit account"
-                 >
-                   <Pencil size={16} />
-                 </button>
-                 <button 
-                   onClick={() => toggleActive(acc.id, acc.is_active)}
-                   className="p-2 hover:bg-muted rounded-lg text-muted-foreground transition-colors"
-                 >
-                   <Settings2 size={16} />
-                 </button>
-                 <button
-                   onClick={() => setAccountToDelete({ id: acc.id, name: acc.alias })}
-                   className="p-2 hover:bg-red-500/10 hover:text-red-500 rounded-lg text-muted-foreground transition-colors"
-                 >
-                   <Trash2 size={16} />
-                 </button>              </div>
+                  <button 
+                    onClick={() => handleExport(acc.id, acc.alias)}
+                    className="p-2 hover:bg-blue-500/10 text-blue-500 rounded-lg transition-all"
+                    title={t('accounts.exportData')}
+                  >
+                    <Download size={16} />
+                  </button>
+                  <button 
+                    onClick={() => openEdit(acc)}
+                    className="p-2 hover:bg-amber-500/10 text-amber-500 rounded-lg transition-all"
+                    title="Edit account"
+                  >
+                    <Pencil size={16} />
+                  </button>
+                  <button 
+                    onClick={() => toggleActive(acc.id, acc.is_active)}
+                    className={cn(
+                      "p-2 rounded-lg transition-all",
+                      acc.is_active === 1 
+                        ? "hover:bg-green-500/10 text-green-500 shadow-[0_0_10px_rgba(34,197,94,0.1)]" 
+                        : "hover:bg-muted text-muted-foreground/40"
+                    )}
+                    title={acc.is_active === 1 ? t('common.online') : t('accounts.offline')}
+                  >
+                    <Power size={16} />
+                  </button>
+                  <button
+                    onClick={() => setAccountToDelete({ id: acc.id, name: acc.alias })}
+                    className="p-2 hover:bg-red-500/10 text-red-500 rounded-lg transition-all"
+                  >
+                    <Trash2 size={16} />
+                  </button>              </div>
           </div>
         ))}
 
@@ -356,20 +393,57 @@ export default function Accounts() {
         </form>
       </Dialog>
 
-      <ConfirmDialog
-        isOpen={!!accountToDelete}
-        onClose={() => setAccountToDelete(null)}
-        onConfirm={async () => {
-          if (accountToDelete) {
-            await deleteAccount(accountToDelete.id);
-            setAccountToDelete(null);
-          }
-        }}
+      {/* 增强型删除确认弹窗 */}
+      <Dialog 
+        isOpen={!!accountToDelete} 
+        onClose={() => setAccountToDelete(null)} 
         title={t('common.delete')}
-        description={t('accounts.deleteConfirm', { name: accountToDelete?.name })}
-        confirmText={t('common.delete')}
         variant="danger"
-      />
+        size="md"
+        footer={
+          <div className="flex items-center justify-between w-full">
+            <button
+               onClick={() => handleExport()}
+               className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-primary hover:bg-primary/5 rounded-lg transition-all"
+            >
+               <Download size={14} />
+               {t('accounts.exportData')}
+            </button>
+            <div className="flex items-center gap-3">
+              <button onClick={() => setAccountToDelete(null)} className="px-4 py-2 text-sm font-bold border border-border rounded-lg hover:bg-muted transition-all">
+                {t('common.cancel')}
+              </button>
+              <button 
+                onClick={async () => {
+                  if (accountToDelete) {
+                    await deleteAccount(accountToDelete.id);
+                    setAccountToDelete(null);
+                  }
+                }}
+                className="px-4 py-2 text-sm font-bold bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all flex items-center gap-2"
+              >
+                <Trash2 size={16} />
+                {t('common.delete')}
+              </button>
+            </div>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+           <div className="p-4 bg-red-500/5 border border-red-500/10 rounded-2xl flex gap-4">
+              <ShieldAlert size={24} className="text-red-500 shrink-0" />
+              <div className="space-y-1">
+                 <p className="text-sm font-bold text-red-600">{t('accounts.deleteWarning')}</p>
+                 <p className="text-xs text-red-500/80 leading-relaxed">
+                   {t('accounts.deleteConfirm', { name: accountToDelete?.name })}
+                 </p>
+              </div>
+           </div>
+           <p className="text-[11px] text-muted-foreground px-1 italic">
+             {t('accounts.deleteWarningDetail')}
+           </p>
+        </div>
+      </Dialog>
     </div>
   );
 }

@@ -99,6 +99,22 @@ export class UsageService {
     `);
     return stmt.all();
   }
+  /**
+   * 按账户获取用量分布
+   */
+  getBreakdownByAccount() {
+    const stmt = db.query(`
+      SELECT 
+        a.alias as name,
+        a.provider_id as provider,
+        SUM(l.input_tokens + l.output_tokens) as totalTokens,
+        COUNT(*) as requests
+      FROM usage_logs l
+      JOIN accounts a ON l.account_id = a.id
+      GROUP BY a.id, a.alias
+    `);
+    return stmt.all();
+  }
 }
 
 export const usageService = new UsageService();

@@ -1,14 +1,14 @@
 import { join } from "node:path";
 import { env } from "../env.js";
-import { handleChatRoute } from "./routes/chat.js";
 import { dispatcher } from "../services/dispatcher.js";
-import { listAccounts, createAccount, updateAccount, deleteAccount } from "./routes/accounts.js";
-import { getAvailableModels, getModelAliases, setModelAlias, deleteModelAlias } from "./routes/models.js";
+import { createAccount, deleteAccount, listAccounts, updateAccount } from "./routes/accounts.js";
 import { handleWebSession } from "./routes/auth.js";
-import { getUsageSummary, getUsageDetails } from "./routes/usage.js";
-import { getSettings, updateSettings } from "./routes/settings.js";
+import { handleChatRoute } from "./routes/chat.js";
 import { getHealthStatus } from "./routes/health.js";
-import { listApiKeys, createApiKey, deleteApiKey, checkAuth } from "./routes/keys.js";
+import { checkAuth, createApiKey, deleteApiKey, listApiKeys } from "./routes/keys.js";
+import { deleteModelAlias, getAvailableModels, getModelAliases, setModelAlias } from "./routes/models.js";
+import { getSettings, updateSettings } from "./routes/settings.js";
+import { getUsageDetails, getUsageSummary } from "./routes/usage.js";
 
 /**
  * 启动 HTTP Gateway
@@ -18,6 +18,14 @@ export function startGateway() {
     port: env.PORT,
     async fetch(req) {
       const url = new URL(req.url);
+
+      if (url.pathname.includes("/export") && url.pathname.startsWith("/api/accounts/")) {
+        const id = url.pathname.split("/").filter(Boolean)[2];
+        if (id && req.method === "GET") {
+          const { exportAccountUsage } = await import("./routes/accounts.js");
+          return exportAccountUsage(id);
+        }
+      }
 
       // 1. 鉴权逻辑
       // 仅拦截外部 API 路径 (/v1/)，管理接口(/api/)和静态文件放行
@@ -67,8 +75,11 @@ export function startGateway() {
         if (req.method === "POST") return createAccount(req);
       }
 
+      // 账户管理子路由：更新、删除
       if (url.pathname.startsWith("/api/accounts/")) {
-        const id = url.pathname.split("/").pop();
+        const pathParts = url.pathname.split("/").filter(Boolean);
+        const id = pathParts[2];
+
         if (id) {
           if (req.method === "PUT") return updateAccount(id, req);
           if (req.method === "DELETE") return deleteAccount(id);

@@ -23,9 +23,11 @@ export function getUsageDetails() {
   try {
     const byModel = usageService.getBreakdownByModel();
     const byProvider = usageService.getBreakdownByProvider();
+    const byAccount = usageService.getBreakdownByAccount();
     return Response.json({
       byModel,
-      byProvider
+      byProvider,
+      byAccount
     });
   } catch (err: any) {
     return Response.json({ error: err.message }, { status: 500 });

@@ -56,6 +56,8 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
+    background-image: radial-gradient(circle at 1px 1px, hsl(var(--border)) 1px, transparent 0);
+    background-size: 40px 40px;
   }
 }
 
@@ -70,11 +72,25 @@
   }
 }
 
-/* Minimalist Page Transitions */
-.page-enter {
-  opacity: 0;
+/* Custom Scrollbar for better consistency */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
 }
-.page-enter-active {
-  opacity: 1;
-  transition: opacity 300ms ease-out;
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-muted-foreground/10 rounded-full;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-muted-foreground/20;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

@@ -24,6 +24,7 @@ interface UsageLog {
 interface UsageBreakdown {
   byModel: any[];
   byProvider: any[];
+  byAccount: any[];
 }
 
 interface UsageState {

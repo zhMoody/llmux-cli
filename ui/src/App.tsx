@@ -105,11 +105,8 @@ function App() {
 
         {/* Main Content */}
         <main className="flex-1 flex flex-col overflow-hidden">
-          <header className="h-14 border-b border-border flex items-center px-8 bg-card/50 backdrop-blur-md sticky top-0 z-40">
+          <header className="h-14 border-b border-border flex items-center px-6 lg:px-10 bg-card/50 backdrop-blur-md sticky top-0 z-40">
             <div className="flex-1">
-               <span className="text-[10px] font-medium text-muted-foreground/60 uppercase tracking-widest">
-                  Gateway Management Portal
-               </span>
             </div>
             <div className="flex items-center gap-4">
                <LanguageSwitcher />
@@ -117,7 +114,7 @@ function App() {
           </header>
 
           <div className="flex-1 overflow-y-auto">
-            <div className="p-8 max-w-7xl mx-auto">
+            <div className="p-6 lg:p-10 max-w-[1600px] mx-auto w-full">
               <Routes>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/accounts" element={<Accounts />} />
