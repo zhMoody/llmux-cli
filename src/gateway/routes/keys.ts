@@ -36,6 +36,29 @@ export async function deleteApiKey(id: string) {
 }
 
 /**
+ * 更新 API Key 配置 (不修改 Key 本身)
+ */
+export async function updateApiKey(id: string, req: Request) {
+  try {
+    const { name, allowed_models } = await req.json() as any;
+    
+    db.prepare(`
+      UPDATE api_keys 
+      SET name = ?, allowed_models = ?
+      WHERE id = ?
+    `).run(
+      name || "Untitled Key", 
+      typeof allowed_models === 'string' ? allowed_models : JSON.stringify(allowed_models),
+      id
+    );
+
+    return Response.json({ success: true });
+  } catch (err: any) {
+    return Response.json({ error: err.message }, { status: 500 });
+  }
+}
+
+/**
  * 校验权限中间件逻辑
  */
 export function checkAuth(req: Request, requestedModel?: string): { authorized: boolean; error?: string } {

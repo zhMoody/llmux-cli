@@ -14,9 +14,11 @@ import {
   Eye,
   EyeOff,
   Terminal,
-  BookOpen
+  BookOpen,
+  Edit2
 } from 'lucide-react';
 import { Dialog, ConfirmDialog } from '../components/Modal';
+import { CopyButton } from '../components/CopyButton';
 
 function cn(...classes: (string | undefined | null | false)[]) {
   return classes.filter(Boolean).join(' ');
@@ -24,10 +26,11 @@ function cn(...classes: (string | undefined | null | false)[]) {
 
 export default function KeysPage() {
   const { t } = useTranslation();
-  const { keys, isLoading, fetchKeys, createKey, deleteKey } = useKeysStore();
+  const { keys, isLoading, fetchKeys, createKey, deleteKey, updateKey } = useKeysStore();
   const { availableModels, aliases, fetchModels, fetchAliases } = useModelsStore();
   
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingKey, setEditingKey] = useState<ApiKey | null>(null);
   const [keyToDelete, setKeyToDelete] = useState<ApiKey | null>(null);
   const [newKeyData, setNewKeyData] = useState({ name: '', allowedModels: '*' as '*' | string[] });
   const [generatedKey, setGeneratedKey] = useState<string | null>(null);
@@ -41,20 +44,23 @@ export default function KeysPage() {
     fetchAliases();
   }, []);
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const handleCreateOrUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const key = await createKey(newKeyData.name, newKeyData.allowedModels);
-      setGeneratedKey(key); // 必须在 catch 之外，确保成功拿回 Key 就显示
+      if (editingKey) {
+        await updateKey(editingKey.id, newKeyData.name, newKeyData.allowedModels);
+        setIsModalOpen(false);
+      } else {
+        const key = await createKey(newKeyData.name, newKeyData.allowedModels);
+        setGeneratedKey(key);
+      }
     } catch (err) {
-      // 即使列表刷新失败了（401），如果 createKey 成功拿回了 key 数据，也可以尝试从 store 的逻辑里补救
-      console.error("Create key error:", err);
+      console.error("Operation error:", err);
     }
   };
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    // You could add a toast here
   };
 
   const toggleVisibility = (id: number) => {
@@ -81,6 +87,7 @@ export default function KeysPage() {
         <button
           onClick={() => {
             setGeneratedKey(null);
+            setEditingKey(null);
             setNewKeyData({ name: '', allowedModels: '*' });
             setIsModalOpen(true);
           }}
@@ -91,7 +98,6 @@ export default function KeysPage() {
         </button>
       </div>
 
-      {/* Usage Documentation */}
       <div className="p-5 bg-card border border-border rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent pointer-events-none" />
         <div className="space-y-1.5 relative">
@@ -106,13 +112,7 @@ export default function KeysPage() {
         <div className="flex items-center gap-2 bg-muted/50 p-2 rounded-xl border border-border/50 relative">
           <span className="text-[10px] font-black uppercase text-muted-foreground/60 border-r border-border/50 pr-2 mr-1 ml-1">{t('keys.endpoint')}</span>
           <code className="text-sm font-mono font-bold select-all text-primary">{baseUrl}</code>
-          <button 
-            onClick={() => copyToClipboard(baseUrl)} 
-            className="p-1.5 hover:bg-background text-muted-foreground hover:text-foreground rounded transition-colors ml-1 shadow-sm border border-transparent hover:border-border"
-            title={t('keys.copyBase')}
-          >
-            <Copy size={14} />
-          </button>
+          <CopyButton value={baseUrl} size={14} title={t('keys.copyBase')} />
         </div>
       </div>
 
@@ -120,7 +120,7 @@ export default function KeysPage() {
         {keys.map((k) => (
           <div key={k.id} className="p-5 rounded-2xl border border-border bg-card hover:border-primary/30 transition-all group relative overflow-hidden">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="space-y-1">
+              <div className="space-y-1 flex-1">
                 <div className="flex items-center gap-2">
                   <h3 className="font-bold text-base">{k.name}</h3>
                   <span className="text-[10px] bg-muted px-2 py-0.5 rounded-full font-bold text-muted-foreground uppercase tracking-tight flex items-center gap-1">
@@ -128,29 +128,34 @@ export default function KeysPage() {
                     {new Date(k.created_at).toLocaleDateString()}
                   </span>
                 </div>
-                <div className="flex items-center gap-2 font-mono text-sm bg-muted/30 p-2 rounded-lg border border-border/50 group/key">
-                  <span className="text-muted-foreground">
+                <div className="flex items-center gap-2 font-mono text-sm bg-muted/30 p-2 rounded-lg border border-border/50 group/key max-w-2xl">
+                  <span className="text-muted-foreground truncate">
                     {visibleKeys[k.id] ? k.key : '••••••••••••••••••••••••'}
                   </span>
-                  <div className="flex items-center gap-1 ml-auto">
+                  <div className="flex items-center gap-1 ml-auto shrink-0">
                     <button 
                       onClick={() => toggleVisibility(k.id)}
                       className="p-1 hover:bg-background rounded transition-colors text-muted-foreground hover:text-foreground"
                     >
                       {visibleKeys[k.id] ? <EyeOff size={14} /> : <Eye size={14} />}
                     </button>
-                    <button 
-                      onClick={() => copyToClipboard(k.key)}
-                      className="p-1 hover:bg-background rounded transition-colors text-muted-foreground hover:text-foreground"
-                    >
-                      <Copy size={14} />
-                    </button>
+                    <CopyButton value={k.key} size={14} />
                   </div>
                 </div>
+                {k.allowed_models !== '*' && (
+                   <div className="flex flex-wrap gap-1.5 mt-2">
+                      {JSON.parse(k.allowed_models).map((m: string) => (
+                         <div key={m} className="flex items-center gap-1 pl-2 pr-1 py-0.5 bg-primary/5 text-primary/70 text-[9px] font-bold rounded border border-primary/10 group/tag hover:bg-primary/10 transition-colors">
+                            {m}
+                            <CopyButton value={m} size={8} className="p-0.5 opacity-0 group-hover/tag:opacity-100 transition-opacity" />
+                         </div>
+                      ))}
+                   </div>
+                )}
               </div>
 
-              <div className="flex items-center gap-6">
-                <div className="text-right">
+              <div className="flex items-center gap-3">
+                <div className="text-right mr-3 hidden sm:block">
                   <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">{t('keys.permissions')}</div>
                   <div className="flex items-center gap-1.5 justify-end">
                     <ShieldCheck size={14} className={k.allowed_models === '*' ? 'text-green-500' : 'text-blue-500'} />
@@ -159,12 +164,30 @@ export default function KeysPage() {
                     </span>
                   </div>
                 </div>
-                <button
-                  onClick={() => setKeyToDelete(k)}
-                  className="p-2.5 hover:bg-red-500/10 hover:text-red-500 rounded-xl text-muted-foreground transition-all"
-                >
-                  <Trash2 size={18} />
-                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => {
+                      setEditingKey(k);
+                      setGeneratedKey(null);
+                      setNewKeyData({ 
+                        name: k.name, 
+                        allowedModels: k.allowed_models === '*' ? '*' : JSON.parse(k.allowed_models) 
+                      });
+                      setIsModalOpen(true);
+                    }}
+                    className="p-2.5 hover:bg-primary/10 hover:text-primary rounded-xl text-muted-foreground transition-all"
+                    title={t('common.edit')}
+                  >
+                    <Edit2 size={18} />
+                  </button>
+                  <button
+                    onClick={() => setKeyToDelete(k)}
+                    className="p-2.5 hover:bg-red-500/10 hover:text-red-500 rounded-xl text-muted-foreground transition-all"
+                    title={t('common.delete')}
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -180,11 +203,10 @@ export default function KeysPage() {
         )}
       </div>
 
-      {/* Create Modal */}
       <Dialog 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
-        title={generatedKey ? t('keys.keyCreated') : t('keys.createKey')}
+        title={generatedKey ? t('keys.keyCreated') : (editingKey ? t('common.edit') : t('keys.createKey'))}
       >
         {generatedKey ? (
           <div className="space-y-6 animate-in zoom-in-95 duration-300">
@@ -195,12 +217,11 @@ export default function KeysPage() {
               </div>
               <div className="flex items-center gap-3 bg-card p-3 rounded-xl border border-border shadow-sm">
                 <code className="text-sm font-mono flex-1 truncate">{generatedKey}</code>
-                <button 
-                  onClick={() => copyToClipboard(generatedKey)}
-                  className="p-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-all"
-                >
-                  <Copy size={16} />
-                </button>
+                <CopyButton 
+                  value={generatedKey} 
+                  size={16} 
+                  className="bg-primary hover:bg-primary text-primary-foreground" 
+                />
               </div>
             </div>
             <button
@@ -211,7 +232,7 @@ export default function KeysPage() {
             </button>
           </div>
         ) : (
-          <form onSubmit={handleCreate} className="space-y-6">
+          <form onSubmit={handleCreateOrUpdate} className="space-y-6">
             <div className="space-y-2">
               <label className="text-xs font-bold text-muted-foreground uppercase px-1">{t('keys.keyName')}</label>
               <input 
@@ -242,7 +263,7 @@ export default function KeysPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setNewKeyData({...newKeyData, allowedModels: []})}
+                  onClick={() => setNewKeyData({...newKeyData, allowedModels: Array.isArray(newKeyData.allowedModels) ? newKeyData.allowedModels : []})}
                   className={cn(
                     "p-3 rounded-xl border text-sm font-bold transition-all flex items-center justify-center gap-2",
                     newKeyData.allowedModels !== '*' 
@@ -276,7 +297,7 @@ export default function KeysPage() {
                     <div className="flex flex-1 items-center justify-between min-w-0">
                       <span className="text-xs font-medium truncate">{item.id}</span>
                       {item.isAlias ? (
-                        <span className="shrink-0 text-[8px] font-black bg-primary/10 text-primary px-1.5 py-0.5 rounded uppercase tracking-tighter">Alias</span>
+                        <span className="shrink-0 text-[8px] font-black bg-primary/10 text-primary px-1.5 py-0.5 rounded uppercase tracking-tighter">{t('common.alias')}</span>
                       ) : (
                         <span className="shrink-0 text-[8px] font-bold text-muted-foreground/40 uppercase">{item.provider}</span>
                       )}

@@ -4,7 +4,8 @@ import { useModelsStore } from '../stores/models';
 import { useAccountsStore } from '../stores/accounts';
 import { 
   RefreshCw, 
-  Plus
+  Plus,
+  Calendar
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -20,6 +21,8 @@ const CHART_COLORS = ['#3b82f6', '#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8
 
 const cn = (...classes: any[]) => classes.filter(Boolean).join(' ');
 
+type TimeRange = '1h' | '24h' | '7d' | '30d' | 'all';
+
 export default function Dashboard() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -27,14 +30,36 @@ export default function Dashboard() {
   const { fetchAccounts } = useAccountsStore();
   const { summary, recentLogs, breakdown, isLoading, fetchSummary, fetchDetails } = useUsageStore();
   const [healthStatus, setHealthStatus] = useState<any[]>([]);
+  const [timeRange, setTimeRange] = useState<TimeRange>('24h');
+
+  // 计算时间范围
+  const getTimeParams = (range: TimeRange) => {
+    const now = new Date();
+    let start: Date | null = null;
+    
+    switch (range) {
+      case '1h': start = new Date(now.getTime() - 3600000); break;
+      case '24h': start = new Date(now.getTime() - 86400000); break;
+      case '7d': start = new Date(now.getTime() - 7 * 86400000); break;
+      case '30d': start = new Date(now.getTime() - 30 * 86400000); break;
+      case 'all': start = null; break;
+    }
+    
+    return {
+      start: start ? start.toISOString().replace('T', ' ').split('.')[0] : undefined,
+      end: undefined
+    };
+  };
 
   const loadAll = async () => {
     try {
+      const { start, end } = getTimeParams(timeRange);
       await Promise.all([
-        fetchSummary(),
+        fetchSummary(start, end),
         fetchAccounts(),
         fetchModels(),
-        checkProvidersHealth()
+        checkProvidersHealth(),
+        fetchDetails(start, end)
       ]);
     } catch (err) {
       console.error('Load dashboard failed:', err);
@@ -53,8 +78,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     loadAll();
-    fetchDetails();
-  }, []);
+  }, [timeRange]);
 
   // 数据聚合逻辑 (保留在主页面，作为数据源)
   const providerData = useMemo(() => {
@@ -85,28 +109,39 @@ export default function Dashboard() {
     // SQLite 默认的 CURRENT_TIMESTAMP 返回不带 Z 的 UTC 字符串，需要手动修补成合法 ISO 格式供 JS 解析
     const parseSqliteTime = (ts: string) => {
       if (!ts) return 0;
+      // 处理已经带 T 的标准 ISO 格式
       if (ts.includes('T')) return new Date(ts).getTime();
-      return new Date(ts.replace(' ', 'T') + 'Z').getTime();
+      // 针对 SQLite 默认的 YYYY-MM-DD HH:MM:SS (UTC) 拼接 Z
+      const iso = ts.replace(' ', 'T') + 'Z';
+      const date = new Date(iso);
+      return isNaN(date.getTime()) ? 0 : date.getTime();
     };
 
     const sortedLogs = [...recentLogs].sort((a, b) => parseSqliteTime(a.timestamp) - parseSqliteTime(b.timestamp));
-    const minTime = parseSqliteTime(sortedLogs[0].timestamp);
-    const maxTime = parseSqliteTime(sortedLogs[sortedLogs.length - 1].timestamp);
+    const minLogTime = parseSqliteTime(sortedLogs[0].timestamp);
+    const lastLogTime = parseSqliteTime(sortedLogs[sortedLogs.length - 1].timestamp);
+    
+    // 强制将图表终点延伸到当前时间，增加“实时感”
+    const now = Date.now();
+    const maxTime = Math.max(lastLogTime, now);
+    
+    // 如果数据极少或跨度极小，默认显示最近 10 分钟
+    const minTime = (maxTime - minLogTime) < 60000 ? maxTime - 600000 : minLogTime;
     const timeSpan = maxTime - minTime;
     
     // 动态增加采样率：如果是短时间监控，提高密度以减少插值的虚假性 (最多 60 个桶)
-    const bucketCount = timeSpan < 600000 ? 40 : 20; 
+    const bucketCount = timeSpan < 600000 ? 40 : 25; 
     const bucketDuration = Math.max(timeSpan / bucketCount, 1000); 
     
-    // 智能选择时间格式：如果整个跨度小于 10 分钟，则显示到秒
-    const useSeconds = timeSpan < 600000;
+    // 智能选择时间格式：如果整个跨度小于 20 分钟，则显示到秒
+    const useSeconds = timeSpan < 1200000;
     const timeOptions: Intl.DateTimeFormatOptions = useSeconds 
-      ? { hour: '2-digit', minute: '2-digit', second: '2-digit' }
-      : { hour: '2-digit', minute: '2-digit' };
+      ? { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }
+      : { hour: '2-digit', minute: '2-digit', hour12: false };
 
     const buckets: any[] = [];
-    // 预留一些边缘空点，防止波形突然垂直切断
-    for (let i = -1; i <= bucketCount + 1; i++) {
+    // 预留边缘空点，防止波形突然垂直切断
+    for (let i = 0; i <= bucketCount; i++) {
         const bucketTime = minTime + i * bucketDuration;
         const bucketData: any = {
             timestamp: bucketTime,
@@ -122,7 +157,9 @@ export default function Dashboard() {
       if (!top5ModelNames.includes(modelName)) return;
       
       const logTime = parseSqliteTime(log.timestamp);
-      const bucketIndex = Math.min(Math.floor((logTime - minTime) / bucketDuration), bucketCount) + 1;
+      if (logTime < minTime) return; // 忽略超出范围的旧数据
+      
+      const bucketIndex = Math.min(Math.floor((logTime - minTime) / bucketDuration), bucketCount);
       
       if (buckets[bucketIndex]) {
          const tokens = (log.input_tokens || 0) + (log.output_tokens || 0);
@@ -141,7 +178,30 @@ export default function Dashboard() {
            <h1 className="text-2xl font-bold tracking-tight">{t('common.dashboard')}</h1>
            <p className="text-sm text-muted-foreground">{t('dashboard.subtitle')}</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+           {/* 时间范围选择 */}
+           <div className="flex bg-muted/30 p-1 rounded-xl border border-border/50 items-center">
+              {[
+                { id: '1h', label: '1H' },
+                { id: '24h', label: '24H' },
+                { id: '7d', label: '7D' },
+                { id: 'all', label: 'ALL' }
+              ].map((r) => (
+                <button
+                  key={r.id}
+                  onClick={() => setTimeRange(r.id as TimeRange)}
+                  className={cn(
+                    "px-3 py-1.5 text-[10px] font-bold rounded-lg transition-all uppercase tracking-wider",
+                    timeRange === r.id 
+                      ? "bg-background text-primary shadow-sm" 
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {r.label}
+                </button>
+              ))}
+           </div>
+
            <button 
              onClick={loadAll}
              className="px-4 py-2 text-sm font-medium border border-border rounded-lg bg-background hover:bg-muted transition-all flex items-center gap-2 group"

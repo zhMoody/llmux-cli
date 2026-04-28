@@ -31,7 +31,8 @@
     "portal": "网关管理门户",
     "healthy": "健康",
     "degraded": "部分降级",
-    "down": "故障"
+    "down": "故障",
+    "alias": "别名"
   },
   "dashboard": {
     "overview": "系统概览",
@@ -97,7 +98,13 @@
     "purge": "清空数据库",
     "purgeDesc": "清除所有本地存储的会话凭证和别名。",
     "purgeBtn": "彻底清空数据库",
-    "purgeConfirm": "【危险操作】确定要彻底重置系统并清空数据库吗？\n这将抹除：\n1. 所有服务商账户信息\n2. 所有自定义模型别名\n3. 所有客户端访问密钥 (API Keys)\n4. 所有历史用量统计和日志\n\n此操作不可撤销，系统将回到初始状态。",
+    "purgeConfirmTitle": "【危险操作】确定要彻底重置系统并清空数据库吗？",
+    "purgeWillWipe": "这将永久抹除：",
+    "wipeAccounts": "1. 所有服务商账户信息",
+    "wipeAliases": "2. 所有自定义模型别名",
+    "wipeKeys": "3. 所有客户端访问密钥 (API Keys)",
+    "wipeLogs": "4. 所有历史用量统计和日志",
+    "purgeIrreversible": "此操作不可撤销，系统将回到初始状态。",
     "purgeSuccess": "系统已重置完毕！",
     "reset": "重置",
     "saveChanges": "保存修改"

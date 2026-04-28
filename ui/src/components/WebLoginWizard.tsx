@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ExternalLink, Copy, Check, X, Loader2, Code2 } from 'lucide-react';
+import { ExternalLink, Check, X, Loader2, Code2 } from 'lucide-react';
+import { CopyButton } from './CopyButton';
 
 interface Props {
   isOpen: boolean;
@@ -10,7 +11,6 @@ interface Props {
 
 export default function WebLoginWizard({ isOpen, onClose, provider }: Props) {
   const { t } = useTranslation();
-  const [copied, setCopied] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
 
   if (!isOpen) return null;
@@ -95,13 +95,10 @@ export default function WebLoginWizard({ isOpen, onClose, provider }: Props) {
 })();
   `.trim();
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(script);
-    setCopied(true);
+  const handleCopyFinished = () => {
     setIsSyncing(true);
     setTimeout(() => {
       setIsSyncing(false);
-      setTimeout(() => setCopied(false), 2000);
     }, 1500);
   };
 
@@ -164,13 +161,15 @@ export default function WebLoginWizard({ isOpen, onClose, provider }: Props) {
                     {script}
                   </pre>
 
-                  <button 
-                    onClick={handleCopy}
-                    className="absolute top-12 right-6 p-2.5 bg-white/10 hover:bg-white/20 text-white rounded-lg backdrop-blur transition-all active:scale-90 flex items-center gap-2 text-xs font-medium border border-white/10 shadow-2xl"
-                  >
-                    {copied ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
-                    {copied ? t('auth.synced') : t('auth.copyScript')}
-                  </button>
+                  <div className="absolute top-12 right-6">
+                    <CopyButton 
+                      value={script} 
+                      size={14} 
+                      className="bg-white/10 hover:bg-white/20 text-white rounded-lg backdrop-blur border border-white/10 shadow-2xl p-2.5" 
+                      title={t('auth.copyScript')}
+                      onCopy={handleCopyFinished}
+                    />
+                  </div>
                 </div>
 
                 {isSyncing && (

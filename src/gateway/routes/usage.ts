@@ -3,10 +3,14 @@ import { usageService } from "../../services/usage.js";
 /**
  * 获取用量汇总统计 (供 Dashboard 头部卡片使用)
  */
-export function getUsageSummary() {
+export function getUsageSummary(req?: Request) {
   try {
-    const summary = usageService.getSummary();
-    const recent = usageService.getRecentLogs(100); // 增加采样点到 100 条，确保趋势图充实
+    const url = req ? new URL(req.url) : null;
+    const start = url?.searchParams.get("start") || undefined;
+    const end = url?.searchParams.get("end") || undefined;
+
+    const summary = usageService.getSummary(start, end);
+    const recent = usageService.getRecentLogs(100, start, end); 
     return Response.json({
       summary: summary || { totalInput: 0, totalOutput: 0, avgLatency: 0, totalRequests: 0, successRequests: 0 },
       recent
@@ -19,11 +23,15 @@ export function getUsageSummary() {
 /**
  * 获取详细的分组用量 (供 Usage 页面使用)
  */
-export function getUsageDetails() {
+export function getUsageDetails(req?: Request) {
   try {
-    const byModel = usageService.getBreakdownByModel();
-    const byProvider = usageService.getBreakdownByProvider();
-    const byAccount = usageService.getBreakdownByAccount();
+    const url = req ? new URL(req.url) : null;
+    const start = url?.searchParams.get("start") || undefined;
+    const end = url?.searchParams.get("end") || undefined;
+
+    const byModel = usageService.getBreakdownByModel(start, end);
+    const byProvider = usageService.getBreakdownByProvider(start, end);
+    const byAccount = usageService.getBreakdownByAccount(start, end);
     return Response.json({
       byModel,
       byProvider,

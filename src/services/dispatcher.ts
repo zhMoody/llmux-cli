@@ -232,16 +232,19 @@ export class Dispatcher {
    */
   private async logStreamUsage(response: Response, accountId: number, providerId: string, model: string, latency: number, request: any) {
     let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+    
+    // 初始估算值
+    const inputChars = JSON.stringify(request.messages || []).length;
+    let promptTokens = Math.ceil(inputChars / 4);
+    let completionTokens = 0;
+    let chunkCount = 0;
+    let hasUsage = false;
+
     try {
       if (!response.body) return;
       reader = response.body.getReader();
       const decoder = new TextDecoder("utf-8");
       
-      let chunkCount = 0;
-      let promptTokens = 0;
-      let completionTokens = 0;
-      let hasUsage = false;
-
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -250,11 +253,12 @@ export class Dispatcher {
         const chunkText = decoder.decode(value, { stream: true });
         
         if (chunkText.includes('"usage"')) {
-          const lines = chunkText.split('\\n');
+          const lines = chunkText.split('\n');
           for (const line of lines) {
-            if (line.startsWith('data: ') && !line.includes('[DONE]')) {
+            const trimmed = line.trim();
+            if (trimmed.startsWith('data: ') && !trimmed.includes('[DONE]')) {
               try {
-                const data = JSON.parse(line.slice(6));
+                const data = JSON.parse(trimmed.slice(6));
                 if (data.usage) {
                   promptTokens = data.usage.prompt_tokens || promptTokens;
                   completionTokens = data.usage.completion_tokens || completionTokens;
@@ -265,29 +269,33 @@ export class Dispatcher {
           }
         }
       }
-
-      // 如果未找到明确的用法统计，使用保守的回退估算法（1 chunk 约 1.2 token，输入按字符数/4估算）
-      if (!hasUsage) {
-        const inputChars = JSON.stringify(request.messages || []).length;
-        promptTokens = Math.ceil(inputChars / 4);
-        completionTokens = chunkCount > 1 ? Math.floor(chunkCount * 1.2) : 1;
+    } catch (e) {
+      // 流读取可能因客户端中断而报错
+      console.warn(`[Dispatcher] Stream log interrupted for ${model}:`, e instanceof Error ? e.message : String(e));
+    } finally {
+      if (reader) {
+        try { reader.releaseLock(); } catch(e) {}
       }
 
-      usageService.logUsage({
-        accountId,
-        providerId,
-        model,
-        inputTokens: promptTokens,
-        outputTokens: completionTokens,
-        latencyMs: latency,
-        success: true,
-        limitCache: this.getLimitCacheFromHeaders(response.headers),
-        isTest: request.is_test
-      });
-    } catch (e) {
-      // 流读取可能因客户端中断而报错，此时仍尽可能记录一部分用量
-    } finally {
-      if (reader) reader.releaseLock();
+      // 无论是否异常中断，都尝试记录已知的用量
+      if (!hasUsage && chunkCount > 0) {
+        completionTokens = Math.floor(chunkCount * 1.2) || 1;
+      }
+
+      // 如果有产生内容或已经有 promptTokens，则记录
+      if (promptTokens > 0 || completionTokens > 0) {
+        usageService.logUsage({
+          accountId,
+          providerId,
+          model,
+          inputTokens: promptTokens,
+          outputTokens: completionTokens,
+          latencyMs: latency,
+          success: true, // 只要有响应流产生，通常视为部分成功
+          limitCache: this.getLimitCacheFromHeaders(response.headers),
+          isTest: request.is_test
+        });
+      }
     }
   }
 

@@ -14,6 +14,7 @@ interface KeysState {
   fetchKeys: () => Promise<void>;
   createKey: (name: string, allowedModels: string[] | '*') => Promise<string>;
   deleteKey: (id: number) => Promise<void>;
+  updateKey: (id: number, name: string, allowedModels: string[] | '*') => Promise<void>;
 }
 
 export const useKeysStore = create<KeysState>((set, get) => ({
@@ -45,6 +46,14 @@ export const useKeysStore = create<KeysState>((set, get) => ({
   deleteKey: async (id) => {
     const res = await fetch(`/api/keys/${id}`, { method: 'DELETE' });
     if (!res.ok) throw new Error('Failed to delete API key');
+    await get().fetchKeys();
+  },
+  updateKey: async (id, name, allowedModels) => {
+    const res = await fetch(`/api/keys/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ name, allowed_models: allowedModels }),
+    });
+    if (!res.ok) throw new Error('Failed to update API key');
     await get().fetchKeys();
   },
 }));

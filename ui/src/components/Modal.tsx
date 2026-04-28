@@ -20,7 +20,7 @@ interface DialogProps {
   isOpen: boolean;
   onClose: () => void;
   title?: string;
-  description?: string;
+  description?: React.ReactNode;
   children?: React.ReactNode;
   /** 底部自定义操作按钮（如确认/取消） */
   footer?: React.ReactNode;
@@ -157,7 +157,7 @@ interface ConfirmDialogProps {
   onClose: () => void;
   onConfirm: () => void | Promise<void>;
   title: string;
-  description?: string;
+  description?: React.ReactNode;
   confirmText?: string;
   cancelText?: string;
   variant?: 'danger' | 'warning' | 'info' | 'success';

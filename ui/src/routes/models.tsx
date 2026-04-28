@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Dialog, ConfirmDialog } from '../components/Modal';
+import { CopyButton } from '../components/CopyButton';
 
 function cn(...classes: (string | undefined | null | false)[]) {
   return classes.filter(Boolean).join(' ');
@@ -192,13 +193,12 @@ export default function Models() {
               {aliases.map(a => (
                 <div key={a.id} className="p-2.5 bg-card border border-border rounded-xl flex items-center justify-between group hover:border-primary/30 transition-all">
                    <div className="flex items-center gap-2 min-w-0">
-                      <button 
-                        onClick={() => navigator.clipboard.writeText(a.alias)} 
-                        className="px-1.5 py-0.5 bg-primary/10 text-primary rounded text-[9px] font-black uppercase flex items-center gap-1 hover:bg-primary/20 transition-colors"
-                        title={t('models.actions.copyAlias')}
-                      >
-                        {a.alias} <Copy size={8} />
-                      </button>
+                      <div className="flex items-center gap-1 group/alias">
+                         <span className="px-1.5 py-0.5 bg-primary/10 text-primary rounded text-[9px] font-black uppercase truncate">
+                           {a.alias}
+                         </span>
+                         <CopyButton value={a.alias} size={10} className="p-1 opacity-0 group-hover/alias:opacity-100 transition-opacity" />
+                      </div>
                       <ArrowRight size={10} className="text-muted-foreground opacity-30 shrink-0" />
                       <div className="text-[11px] font-bold truncate text-muted-foreground">{a.target_model}</div>
                    </div>
@@ -269,13 +269,12 @@ export default function Models() {
               </div>
               <div className="flex items-start justify-between gap-2">
                 <h3 className="font-bold text-sm tracking-tight line-clamp-2 leading-snug">{model.id}</h3>
-                <button 
-                  onClick={() => navigator.clipboard.writeText(model.id)}
-                  className="mt-0.5 text-muted-foreground/40 hover:text-primary transition-colors shrink-0"
-                  title={t('models.actions.copyName')}
-                >
-                  <Copy size={12} />
-                </button>
+                <CopyButton 
+                  value={model.id} 
+                  size={12} 
+                  className="mt-0.5 opacity-40 hover:opacity-100 transition-opacity" 
+                  title={t('models.actions.copyName')} 
+                />
               </div>
               <div className="flex items-center gap-2">
                 {testResults[model.id]?.latency && (

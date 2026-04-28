@@ -32,8 +32,8 @@ interface UsageState {
   recentLogs: UsageLog[];
   breakdown: UsageBreakdown | null;
   isLoading: boolean;
-  fetchSummary: () => Promise<void>;
-  fetchDetails: () => Promise<void>;
+  fetchSummary: (start?: string, end?: string) => Promise<void>;
+  fetchDetails: (start?: string, end?: string) => Promise<void>;
 }
 
 export const useUsageStore = create<UsageState>((set) => ({
@@ -42,10 +42,15 @@ export const useUsageStore = create<UsageState>((set) => ({
   breakdown: null,
   isLoading: false,
 
-  fetchSummary: async () => {
+  fetchSummary: async (start, end) => {
     set({ isLoading: true });
     try {
-      const res = await fetch('/api/usage/summary');
+      const params = new URLSearchParams();
+      if (start) params.append('start', start);
+      if (end) params.append('end', end);
+      
+      const query = params.toString() ? `?${params.toString()}` : '';
+      const res = await fetch(`/api/usage/summary${query}`);
       const data = await res.json();
       set({ summary: data.summary, recentLogs: data.recent });
     } catch (err) {
@@ -55,10 +60,15 @@ export const useUsageStore = create<UsageState>((set) => ({
     }
   },
 
-  fetchDetails: async () => {
+  fetchDetails: async (start, end) => {
     set({ isLoading: true });
     try {
-      const res = await fetch('/api/usage/details');
+      const params = new URLSearchParams();
+      if (start) params.append('start', start);
+      if (end) params.append('end', end);
+      
+      const query = params.toString() ? `?${params.toString()}` : '';
+      const res = await fetch(`/api/usage/details${query}`);
       const data = await res.json();
       set({ breakdown: data });
     } catch (err) {

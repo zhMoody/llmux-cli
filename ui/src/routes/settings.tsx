@@ -163,8 +163,38 @@ export default function Settings() {
         isOpen={isConfirmOpen}
         onClose={() => setIsConfirmOpen(false)}
         onConfirm={handlePurge}
-        title={t('common.delete')}
-        description={t('settings.purgeConfirm')}
+        title={t('settings.purge')}
+        description={
+          <div className="space-y-4">
+             <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl flex gap-3">
+                <Shield size={20} className="text-red-500 shrink-0" />
+                <p className="text-xs font-bold text-red-600 leading-relaxed">
+                  {t('settings.purgeConfirmTitle', '【危险操作】确定要彻底重置系统并清空数据库吗？')}
+                </p>
+             </div>
+             <div>
+                <p className="text-[11px] font-black text-muted-foreground uppercase tracking-widest mb-2 px-1">
+                   {t('settings.purgeWillWipe', '这将永久抹除：')}
+                </p>
+                <div className="grid grid-cols-1 gap-1">
+                   {[
+                     t('settings.wipeAccounts', '1. 所有服务商账户信息'),
+                     t('settings.wipeAliases', '2. 所有自定义模型别名'),
+                     t('settings.wipeKeys', '3. 所有客户端访问密钥 (API Keys)'),
+                     t('settings.wipeLogs', '4. 所有历史用量统计和日志')
+                   ].map((item, idx) => (
+                     <div key={idx} className="flex items-center gap-2 px-3 py-1.5 bg-muted/40 rounded-lg text-[11px] font-medium text-muted-foreground border border-transparent hover:border-border/50">
+                        <div className="w-1 h-1 rounded-full bg-red-400" />
+                        {item}
+                     </div>
+                   ))}
+                </div>
+             </div>
+             <p className="text-[10px] text-red-500/70 italic px-1">
+                {t('settings.purgeIrreversible', '此操作不可撤销，系统将回到初始状态。')}
+             </p>
+          </div>
+        }
         confirmText={t('settings.purgeBtn')}
         cancelText={t('common.cancel')}
         variant="danger"

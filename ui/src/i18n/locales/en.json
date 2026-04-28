@@ -31,7 +31,8 @@
     "portal": "Gateway Management Portal",
     "healthy": "Healthy",
     "degraded": "Degraded",
-    "down": "Down"
+    "down": "Down",
+    "alias": "Alias"
   },
   "dashboard": {
     "overview": "System Overview",
@@ -97,7 +98,13 @@
     "purge": "Purge Database",
     "purgeDesc": "Clear all locally stored session keys and aliases.",
     "purgeBtn": "Purge Local Database",
-    "purgeConfirm": "[DANGEROUS] Are you sure you want to completely reset the system and clear the database?\nThis will WIPE:\n1. All provider account info\n2. All custom model aliases\n3. All client access keys (API Keys)\n4. All historical usage stats and logs\n\nThis action cannot be undone, the system will return to its initial state.",
+    "purgeConfirmTitle": "[DANGEROUS] Are you sure you want to completely reset the system and clear the database?",
+    "purgeWillWipe": "This will PERMANENTLY wipe:",
+    "wipeAccounts": "1. All provider account info",
+    "wipeAliases": "2. All custom model aliases",
+    "wipeKeys": "3. All client access keys (API Keys)",
+    "wipeLogs": "4. All historical usage stats and logs",
+    "purgeIrreversible": "This action cannot be undone, the system will return to its initial state.",
     "purgeSuccess": "System reset complete!",
     "reset": "Reset",
     "saveChanges": "Save Changes"
@@ -232,6 +239,13 @@
     "specificModels": "{{count}} Models",
     "copyBase": "Copy Base URL",
     "title": "API Key Management",
-    "subtitle": "Generate and manage client keys used to access this gateway."
+    "subtitle": "Generate and manage client keys used to access this gateway.",
+    "keyName": "Key Name",
+    "keyPlaceholder": "e.g., My iPhone Client",
+    "permissions": "Permissions",
+    "allModels": "All Models",
+    "selectedModels": "Selected Models",
+    "copySuccess": "Copied to clipboard",
+    "deleteConfirm": "Are you sure you want to delete key \"{{name}}\"? This cannot be undone, and associated clients will lose access."
   }
 }

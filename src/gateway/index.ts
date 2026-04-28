@@ -5,7 +5,7 @@ import { createAccount, deleteAccount, listAccounts, updateAccount } from "./rou
 import { handleWebSession } from "./routes/auth.js";
 import { handleChatRoute } from "./routes/chat.js";
 import { getHealthStatus } from "./routes/health.js";
-import { checkAuth, createApiKey, deleteApiKey, listApiKeys } from "./routes/keys.js";
+import { checkAuth, createApiKey, deleteApiKey, listApiKeys, updateApiKey } from "./routes/keys.js";
 import { deleteModelAlias, getAvailableModels, getModelAliases, setModelAlias } from "./routes/models.js";
 import { getSettings, purgeDatabase, updateSettings } from "./routes/settings.js";
 import { getUsageDetails, getUsageSummary } from "./routes/usage.js";
@@ -62,7 +62,10 @@ export function startGateway() {
       }
       if (url.pathname.startsWith("/api/keys/")) {
         const id = url.pathname.split("/").pop();
-        if (id && req.method === "DELETE") return deleteApiKey(id);
+        if (id) {
+          if (req.method === "DELETE") return deleteApiKey(id);
+          if (req.method === "PUT") return updateApiKey(id, req);
+        }
       }
       // 身份认证与 Session 导入
       if (url.pathname === "/api/auth/web-session" && req.method === "POST") {
@@ -123,10 +126,10 @@ export function startGateway() {
 
       // 用量统计
       if (url.pathname === "/api/usage/summary" && req.method === "GET") {
-        return getUsageSummary();
+        return getUsageSummary(req);
       }
       if (url.pathname === "/api/usage/details" && req.method === "GET") {
-        return getUsageDetails();
+        return getUsageDetails(req);
       }
 
       // 健康状态

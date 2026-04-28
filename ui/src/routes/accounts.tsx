@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Dialog, ConfirmDialog } from '../components/Modal';
+import { CopyButton } from '../components/CopyButton';
 
 function cn(...classes: (string | undefined | null | false)[]) {
   return classes.filter(Boolean).join(' ');
@@ -36,7 +37,6 @@ export default function Accounts() {
   const [activeTab, setActiveTab] = useState<'api' | 'web'>('api');
   const [formData, setFormData] = useState({ alias: '', provider_id: 'custom', api_key: '', base_url: '' });
   const [editData, setEditData] = useState({ alias: '', provider_id: '', api_key: '', base_url: '', notes: '' });
-  const [copied, setCopied] = useState(false);
   const [accountToDelete, setAccountToDelete] = useState<{id: number, name: string} | null>(null);
 
   useEffect(() => {
@@ -87,11 +87,8 @@ export default function Accounts() {
     }
   };
 
-  const copyScript = () => {
-    const script = `(async()=>{const p="${formData.provider_id}";console.log("🚀 LLMux Syncing...");const t=localStorage.getItem("token")||document.cookie;fetch("http://localhost:25975/api/auth/sync",{method:"POST",body:JSON.stringify({provider:p,token:t})})})();`;
-    navigator.clipboard.writeText(script);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const getSyncScript = () => {
+    return `(async()=>{const p="${formData.provider_id}";console.log("🚀 LLMux Syncing...");const t=localStorage.getItem("token")||document.cookie;fetch("http://localhost:25975/api/auth/sync",{method:"POST",body:JSON.stringify({provider:p,token:t})})})();`;
   };
 
   const handleExport = async (id?: number, alias?: string) => {
@@ -316,13 +313,15 @@ export default function Accounts() {
                   </div>
 
                   <div className="pt-2">
-                     <button
-                       onClick={copyScript}
-                       className="w-full flex items-center justify-center gap-2 py-3 bg-card border border-border rounded-lg text-xs font-bold hover:bg-muted transition-all"
-                     >
-                       {copied ? <CheckCircle2 size={16} className="text-green-500" /> : <Copy size={16} />}
-                       {copied ? t('accounts.copied') : t('auth.copyScript')}
-                     </button>
+                     <div className="flex items-center justify-between p-3 bg-card border border-border rounded-lg">
+                        <span className="text-[10px] font-bold text-muted-foreground truncate flex-1 mr-2">{t('auth.copyScript')}</span>
+                        <CopyButton 
+                          value={getSyncScript()} 
+                          size={16} 
+                          title={t('accounts.copyScript')}
+                          className="bg-primary/10 text-primary hover:bg-primary/20"
+                        />
+                     </div>
                   </div>
                </div>
 
