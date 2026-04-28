@@ -1,4 +1,4 @@
-name: Publish to NPM
+name: Publish Package to npm
 
 on:
   release:
@@ -8,29 +8,32 @@ on:
       - 'v*'
   workflow_dispatch:
 
-jobs:
-  build_and_publish:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write # 必须的关键权限：用于获取 OIDC 令牌进行无密钥验证和 Provenance 签名
-    steps:
-      - name: Checkout Source Code
-        uses: actions/checkout@v4
+permissions:
+  contents: read
+  id-token: write 
 
-      - name: Setup Node (For target npm environment validation)
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          registry-url: 'https://registry.npmjs.org'
+          node-version: '20'
 
       - name: Setup Bun runtime
         uses: oven-sh/setup-bun@v1
         with:
           bun-version: latest
 
-      - name: Install root dependencies
-        run: bun install
+      - name: Install dependencies
+        run: |
+          npm install -g npm@latest
+          bun install
 
-      - name: Publish to NPM (With Provenance)
-        run: npm publish --provenance --access public
+      - name: Publish to npm
+        run: |
+          npm config set //registry.npmjs.org/:_authToken ""
+          npm publish --access public --provenance
