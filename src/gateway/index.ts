@@ -7,7 +7,7 @@ import { handleChatRoute } from "./routes/chat.js";
 import { getHealthStatus } from "./routes/health.js";
 import { checkAuth, createApiKey, deleteApiKey, listApiKeys } from "./routes/keys.js";
 import { deleteModelAlias, getAvailableModels, getModelAliases, setModelAlias } from "./routes/models.js";
-import { getSettings, updateSettings } from "./routes/settings.js";
+import { getSettings, purgeDatabase, updateSettings } from "./routes/settings.js";
 import { getUsageDetails, getUsageSummary } from "./routes/usage.js";
 
 /**
@@ -138,6 +138,9 @@ export function startGateway() {
       if (url.pathname === "/api/settings") {
         if (req.method === "GET") return getSettings();
         if (req.method === "PUT") return updateSettings(req);
+      }
+      if (url.pathname === "/api/settings/reset" && req.method === "POST") {
+        return purgeDatabase();
       }
 
       // 2. 静态文件托管 (Web UI)

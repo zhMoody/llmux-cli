@@ -23,7 +23,7 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          'vendor-recharts': ['recharts'],
+          'vendor-chartjs': ['chart.js', 'react-chartjs-2'],
           'vendor-lucide': ['lucide-react'],
           'vendor-react': ['react', 'react-dom', 'react-router-dom'],
         }

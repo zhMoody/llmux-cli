@@ -58,11 +58,11 @@ export class UsageService {
   getSummary() {
     const stmt = db.query(`
       SELECT 
-        SUM(input_tokens) as totalInput,
-        SUM(output_tokens) as totalOutput,
-        AVG(latency_ms) as avgLatency,
+        IFNULL(SUM(input_tokens), 0) as totalInput,
+        IFNULL(SUM(output_tokens), 0) as totalOutput,
+        IFNULL(AVG(latency_ms), 0) as avgLatency,
         COUNT(*) as totalRequests,
-        SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END) as successRequests
+        IFNULL(SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END), 0) as successRequests
       FROM usage_logs
     `);
     return stmt.get();

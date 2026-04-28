@@ -161,6 +161,7 @@ interface ConfirmDialogProps {
   cancelText?: string;
   variant?: 'danger' | 'warning' | 'info' | 'success';
   isLoading?: boolean;
+  size?: DialogSize;
 }
 
 export function ConfirmDialog({
@@ -173,6 +174,7 @@ export function ConfirmDialog({
   cancelText = 'Cancel',
   variant = 'warning',
   isLoading = false,
+  size = 'sm',
 }: ConfirmDialogProps) {
   const confirmColor = {
     danger:  'bg-red-500 text-white hover:bg-red-600',
@@ -187,7 +189,7 @@ export function ConfirmDialog({
       onClose={onClose}
       title={title}
       description={description}
-      size="sm"
+      size={size}
       variant={variant}
       closeOnOverlay={!isLoading}
       hideClose={isLoading}

@@ -6,7 +6,7 @@ import { usageService } from "../../services/usage.js";
 export function getUsageSummary() {
   try {
     const summary = usageService.getSummary();
-    const recent = usageService.getRecentLogs(10);
+    const recent = usageService.getRecentLogs(100); // 增加采样点到 100 条，确保趋势图充实
     return Response.json({
       summary: summary || { totalInput: 0, totalOutput: 0, avgLatency: 0, totalRequests: 0, successRequests: 0 },
       recent

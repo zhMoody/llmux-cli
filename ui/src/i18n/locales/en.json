@@ -47,7 +47,8 @@
     "charts": {
       "providerCalls": "Provider Call Distribution",
       "modelTokens": "Model Token Usage (Top 5)",
-      "realTimeTrend": "Real-time token consumption trend"
+      "realTimeTrend": "Real-time token consumption trend",
+      "accountRequests": "Account Requests Distribution"
     },
     "connectNew": "Connect New",
     "noTraffic": "No traffic",
@@ -93,6 +94,8 @@
     "purge": "Purge Database",
     "purgeDesc": "Clear all locally stored session keys and aliases.",
     "purgeBtn": "Purge Local Database",
+    "purgeConfirm": "[DANGEROUS] Are you sure you want to completely reset the system and clear the database?\nThis will WIPE:\n1. All provider account info\n2. All custom model aliases\n3. All client access keys (API Keys)\n4. All historical usage stats and logs\n\nThis action cannot be undone, the system will return to its initial state.",
+    "purgeSuccess": "System reset complete!",
     "reset": "Reset",
     "saveChanges": "Save Changes"
   },

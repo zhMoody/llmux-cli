@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { useSettingsStore } from '../stores/settings';
 import { 
   Settings as SettingsIcon, 
@@ -11,6 +12,7 @@ import {
   Loader2,
   CheckCircle2
 } from 'lucide-react';
+import { ConfirmDialog } from '../components/Modal';
 
 function cn(...classes: (string | undefined | null | false)[]) {
   return classes.filter(Boolean).join(' ');
@@ -44,9 +46,12 @@ const SettingItem = ({ label, description, children }: { label: string, descript
 
 export default function Settings() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { config, isLoading, fetchSettings, updateSettings } = useSettingsStore();
   const [localConfig, setLocalConfig] = useState<Record<string, any>>({});
   const [showSaved, setShowSaved] = useState(false);
+  const [isPurging, setIsPurging] = useState(false);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   useEffect(() => {
     fetchSettings();
@@ -60,6 +65,24 @@ export default function Settings() {
     await updateSettings(localConfig);
     setShowSaved(true);
     setTimeout(() => setShowSaved(false), 3000);
+  };
+
+  const handlePurge = async () => {
+    setIsConfirmOpen(false);
+    setIsPurging(true);
+    try {
+      const res = await fetch('/api/settings/reset', { method: 'POST' });
+      if (res.ok) {
+        window.location.href = '/'; 
+      } else {
+        alert('Reset failed');
+      }
+    } catch (err) {
+      console.error('Purge failed:', err);
+      alert('Network error');
+    } finally {
+      setIsPurging(false);
+    }
   };
 
   return (
@@ -98,8 +121,8 @@ export default function Settings() {
            </SettingItem>
            <SettingItem label={t('settings.autoUpdate')} description={t('settings.autoUpdateDesc')}>
              <div 
-               onClick={() => setLocalConfig({...localConfig, autoUpdate: !localConfig.autoUpdate})}
-               className={cn("w-10 h-5 rounded-full relative cursor-pointer transition-colors px-1 flex items-center", localConfig.autoUpdate ? 'bg-primary' : 'bg-muted')}
+                onClick={() => setLocalConfig({...localConfig, autoUpdate: !localConfig.autoUpdate})}
+                className={cn("w-10 h-5 rounded-full relative cursor-pointer transition-colors px-1 flex items-center", localConfig.autoUpdate ? 'bg-primary' : 'bg-muted')}
               >
                 <div className={cn("w-3 h-3 bg-white rounded-full transition-all", localConfig.autoUpdate ? 'translate-x-5' : 'translate-x-0')} />
              </div>
@@ -127,12 +150,30 @@ export default function Settings() {
 
         <SettingGroup title={t('settings.security')} icon={Shield}>
            <SettingItem label={t('settings.purge')} description={t('settings.purgeDesc')}>
-             <button className="px-3 py-1.5 text-[10px] font-bold text-red-500 border border-red-500/20 rounded-lg hover:bg-red-500 hover:text-white transition-all capitalize">
-               {t('settings.purgeBtn')}
+             <button 
+                onClick={() => setIsConfirmOpen(true)}
+                disabled={isPurging}
+                className="px-3 py-1.5 text-[10px] font-bold text-red-500 border border-red-500/20 rounded-lg hover:bg-red-500 hover:text-white transition-all disabled:opacity-50"
+              >
+                {isPurging ? <Loader2 size={12} className="animate-spin inline mr-1" /> : null}
+                {t('settings.purgeBtn')}
              </button>
            </SettingItem>
         </SettingGroup>
       </div>
+
+      <ConfirmDialog 
+        isOpen={isConfirmOpen}
+        onClose={() => setIsConfirmOpen(false)}
+        onConfirm={handlePurge}
+        title={t('common.delete')}
+        description={t('settings.purgeConfirm')}
+        confirmText={t('settings.purgeBtn')}
+        cancelText={t('common.cancel')}
+        variant="danger"
+        size="md"
+        isLoading={isPurging}
+      />
     </div>
   );
 }
