@@ -9,6 +9,7 @@ import { checkAuth, createApiKey, deleteApiKey, listApiKeys, updateApiKey } from
 import { deleteModelAlias, getAvailableModels, getModelAliases, setModelAlias } from "./routes/models.js";
 import { getSettings, purgeDatabase, updateSettings } from "./routes/settings.js";
 import { getUsageDetails, getUsageSummary } from "./routes/usage.js";
+import { anthropicIngress } from "../services/anthropic_ingress.js";
  
 /**
  * 启动 HTTP Gateway
@@ -31,7 +32,7 @@ export function startGateway() {
       // 仅拦截外部 API 路径 (/v1/)，管理接口(/api/)和静态文件放行
       if (url.pathname.startsWith("/v1/")) {
         let requestedModel: string | undefined;
-        if (url.pathname === "/v1/chat/completions" && req.method === "POST") {
+        if ((url.pathname === "/v1/chat/completions" || url.pathname === "/v1/messages") && req.method === "POST") {
           try {
             const body = await req.clone().json() as any;
             requestedModel = body.model;
@@ -47,6 +48,10 @@ export function startGateway() {
       // 2. API 路由分发
       if (req.method === "POST" && url.pathname === "/v1/chat/completions") {
         return handleChatRoute(req);
+      }
+
+      if (req.method === "POST" && url.pathname === "/v1/messages") {
+        return anthropicIngress.handleMessages(req);
       }
 
       if (req.method === "GET" && url.pathname === "/v1/models") {

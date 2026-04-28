@@ -9,3 +9,6 @@ dist/
 release/
 llmux*.exe
 llmux*
+
+test/
+scratch/

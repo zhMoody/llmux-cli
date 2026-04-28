@@ -65,7 +65,8 @@ export function checkAuth(req: Request, requestedModel?: string): { authorized: 
 
 
   const authHeader = req.headers.get("Authorization");
-  const providedKey = authHeader?.startsWith("Bearer ") ? authHeader.substring(7) : authHeader;
+  const xApiKey = req.headers.get("x-api-key");
+  const providedKey = (authHeader?.startsWith("Bearer ") ? authHeader.substring(7) : authHeader) || xApiKey;
 
   if (!providedKey) return { authorized: false, error: "Missing API Key. Gateway is locked." };
 
