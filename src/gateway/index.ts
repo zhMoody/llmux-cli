@@ -18,7 +18,28 @@ export function startGateway() {
   const server = Bun.serve({
     port: env.PORT,
     async fetch(req) {
-      const url = new URL(req.url);
+      // 通用错误响应适配器
+    const sendError = (message: string, type: string = "invalid_request_error", status: number = 400) => {
+      const isAnthropic = !!req.headers.get("x-api-key");
+      if (isAnthropic) {
+        return Response.json({
+          type: "error",
+          error: {
+            type: status === 401 ? "authentication_error" : type,
+            message: message
+          }
+        }, { status });
+      }
+      return Response.json({
+        error: {
+          message: message,
+          type: type,
+          code: status.toString()
+        }
+      }, { status });
+    };
+
+    const url = new URL(req.url);
 
       if (url.pathname.includes("/export") && url.pathname.startsWith("/api/accounts/")) {
         const id = url.pathname.split("/").filter(Boolean)[2];
@@ -41,7 +62,7 @@ export function startGateway() {
 
         const auth = checkAuth(req, requestedModel);
         if (!auth.authorized) {
-          return Response.json({ error: "Unauthorized", message: auth.error }, { status: 401 });
+          return sendError(auth.error || "Unauthorized", "authentication_error", 401);
         }
       }
 
@@ -55,8 +76,20 @@ export function startGateway() {
       }
 
       if (req.method === "GET" && url.pathname === "/v1/models") {
+        const isAnthropic = !!req.headers.get("x-api-key");
+        if (isAnthropic) {
+          return anthropicIngress.handleModels();
+        }
         const models = dispatcher.listModelAliases();
-        return Response.json({ data: models });
+        return Response.json({
+          object: "list",
+          data: models.map((m: any) => ({
+            id: m.alias || m.id || m,
+            object: "model",
+            created: Math.floor(Date.now() / 1000),
+            owned_by: "llmux"
+          }))
+        });
       }
 
       // 1.1 管理 API (Web UI 调用)

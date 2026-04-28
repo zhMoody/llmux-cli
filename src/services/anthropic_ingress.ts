@@ -24,7 +24,16 @@ export class AnthropicIngressService {
       // 2. 调用调度器
       const response = await dispatcher.dispatchChat(openAIRequest);
 
-      if (!response.ok) return response;
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        return Response.json({
+          type: "error",
+          error: {
+            type: response.status === 401 ? "authentication_error" : "api_error",
+            message: errorData.error?.message || errorData.error || "Provider Error"
+          }
+        }, { status: response.status });
+      }
 
       // 3. 将响应转换回 Anthropic 格式
       if (openAIRequest.stream) {
@@ -33,8 +42,31 @@ export class AnthropicIngressService {
         return this.handleNormalResponse(response, openAIRequest.model);
       }
     } catch (err: any) {
-      return Response.json({ error: { message: err.message, type: "invalid_request_error" } }, { status: 400 });
+      return Response.json({
+        type: "error",
+        error: {
+          type: "invalid_request_error",
+          message: err.message
+        }
+      }, { status: 400 });
     }
+  }
+
+  async handleModels(): Promise<Response> {
+    const models = dispatcher.listModelAliases();
+    const anthropicModels = models.map((m: any) => ({
+      type: "model",
+      id: m.alias || m.id,
+      display_name: m.alias || m.id,
+      created_at: new Date().toISOString(),
+    }));
+
+    return Response.json({
+      data: anthropicModels,
+      has_more: false,
+      first_id: anthropicModels[0]?.id || null,
+      last_id: anthropicModels[anthropicModels.length - 1]?.id || null,
+    });
   }
 
   private transformToOpenAIMessages(system: string, messages: any[]): ChatMessage[] {

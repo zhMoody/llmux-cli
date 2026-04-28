@@ -21,6 +21,20 @@ export async function handleChatRoute(req: Request): Promise<Response> {
 
   } catch (err: any) {
     console.error("[Gateway] Chat route error:", err);
-    return Response.json({ error: err.message || "Internal Server Error" }, { status: 500 });
+    
+    const isAnthropic = !!req.headers.get("x-api-key");
+    if (isAnthropic) {
+      return Response.json({
+        type: "error",
+        error: { type: "api_error", message: err.message || "Internal Server Error" }
+      }, { status: 500 });
+    }
+
+    return Response.json({ 
+      error: {
+        message: err.message || "Internal Server Error",
+        type: "internal_server_error"
+      } 
+    }, { status: 500 });
   }
 }
