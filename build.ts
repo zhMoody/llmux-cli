@@ -1,7 +1,7 @@
 import { $ } from "bun";
-import { rm, mkdir, rename, cp } from "node:fs/promises";
-import { join } from "node:path";
 import { existsSync } from "node:fs";
+import { mkdir } from "node:fs/promises";
+import { join } from "node:path";
 
 console.log("🚀 Starting LLMux release build...");
 

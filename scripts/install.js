@@ -1,12 +1,16 @@
-const fs = require('fs');
-const path = require('path');
-const https = require('https');
-const os = require('os');
-const { execSync } = require('child_process');
+import { execSync } from 'node:child_process';
+import fs from 'node:fs';
+import https from 'node:https';
+import os from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const pkg = require('../package.json');
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const pkg = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf-8'));
 const version = pkg.version;
-const repo = 'zhMoody/llmux-cli'; 
+const repo = 'zhMoody/llmux-cli';
 
 const platform = os.platform(); // 'win32', 'darwin', 'linux'
 const arch = os.arch();         // 'x64', 'arm64'
@@ -24,14 +28,14 @@ const targetKey = `${platform}-${arch}`;
 const target = targetMap[targetKey];
 
 if (!target) {
-    console.error(`🔴 LLMux does not provide pre-compiled binaries for ${targetKey}.`);
-    console.error('You will need to use Bun to run it from source: bun install -g llmux-cli');
-    process.exit(0); // Exit safely without breaking the install flow
+  console.error(`🔴 LLMux does not provide pre-compiled binaries for ${targetKey}.`);
+  console.error('You will need to use Bun to run it from source: bun install -g llmux-cli');
+  process.exit(0); // Exit safely without breaking the install flow
 }
 
 const binDir = path.join(__dirname, '../bin');
 if (!fs.existsSync(binDir)) {
-    fs.mkdirSync(binDir, { recursive: true });
+  fs.mkdirSync(binDir, { recursive: true });
 }
 
 const exePath = path.join(binDir, `llmux${target.ext}`);
@@ -43,36 +47,36 @@ console.log(`⏬ Downloading LLMux native binary for ${targetKey}...`);
 console.log(`🔗 URL: ${url}`);
 
 function download(url, dest) {
-    return new Promise((resolve, reject) => {
-        const file = fs.createWriteStream(dest);
-        https.get(url, (response) => {
-            if (response.statusCode === 301 || response.statusCode === 302) {
-                return download(response.headers.location, dest).then(resolve).catch(reject);
-            }
-            if (response.statusCode !== 200) {
-                return reject(new Error(`Failed to download binary, HTTP status code: ${response.statusCode}`));
-            }
-            response.pipe(file);
-            file.on('finish', () => {
-                file.close();
-                if (platform !== 'win32') {
-                    execSync(`chmod +x "${dest}"`);
-                }
-                resolve();
-            });
-        }).on('error', (err) => {
-            fs.unlinkSync(dest);
-            reject(err);
-        });
+  return new Promise((resolve, reject) => {
+    const file = fs.createWriteStream(dest);
+    https.get(url, (response) => {
+      if (response.statusCode === 301 || response.statusCode === 302) {
+        return download(response.headers.location, dest).then(resolve).catch(reject);
+      }
+      if (response.statusCode !== 200) {
+        return reject(new Error(`Failed to download binary, HTTP status code: ${response.statusCode}`));
+      }
+      response.pipe(file);
+      file.on('finish', () => {
+        file.close();
+        if (platform !== 'win32') {
+          execSync(`chmod +x "${dest}"`);
+        }
+        resolve();
+      });
+    }).on('error', (err) => {
+      fs.unlinkSync(dest);
+      reject(err);
     });
+  });
 }
 
 // Download the binary, silently suppress hard failure so the pure-Node/Bun users can still clone/fallback to bun
 download(url, exePath)
-    .then(() => {
-        console.log("✅ LLMux native binary successfully installed!\n");
-    })
-    .catch((err) => {
-        console.warn(`⚠️ Failed to download native binary. Error: ${err.message}`);
-        console.warn('Fallback: LLMux will attempt to use the local Bun runtime to execute the TypeScript source instead if available.\n');
-    });
+  .then(() => {
+    console.log("✅ LLMux native binary successfully installed!\n");
+  })
+  .catch((err) => {
+    console.warn(`⚠️ Failed to download native binary. Error: ${err.message}`);
+    console.warn('Fallback: LLMux will attempt to use the local Bun runtime to execute the TypeScript source instead if available.\n');
+  });
