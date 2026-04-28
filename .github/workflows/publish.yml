@@ -33,3 +33,13 @@ jobs:
         run: |
           npm config set //registry.npmjs.org/:_authToken ""
           npm publish --access public --provenance
+
+      - name: Upload Binaries to Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -d "release" ]; then
+            gh release upload ${{ github.ref_name }} release/* --clobber
+          else
+            echo "No release directory found."
+          fi

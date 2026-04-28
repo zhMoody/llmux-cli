@@ -15,16 +15,21 @@ const binFile = path.join(__dirname, `llmux${ext}`);
 if (fs.existsSync(binFile)) {
   // 1. High Performance Native Path: Use the pre-compiled C++/Zig/Bun standalone binary
   const child = cp.spawnSync(binFile, process.argv.slice(2), { stdio: 'inherit' });
-  process.exit(child.status || 0);
+  if (child.error) {
+    console.error("❌ Failed to launch downloaded binary:", child.error.message);
+    process.exit(1);
+  }
+  process.exit(child.status ?? 1);
 } else {
   // 2. Developer/Source Path: Try running directly with Bun (useful for local development or if download fails)
-  try {
-    const srcPath = path.join(__dirname, '../src/cli/index.ts');
-    const child = cp.spawnSync('bun', ['run', srcPath, ...process.argv.slice(2)], { stdio: 'inherit' });
-    process.exit(child.status || 0);
-  } catch (e) {
-    console.error("❌ LLMux executable not found and 'bun' is not installed locally.");
+  const srcPath = path.join(__dirname, '../src/cli/index.ts');
+  const child = cp.spawnSync('bun', ['run', srcPath, ...process.argv.slice(2)], { stdio: 'inherit' });
+  
+  if (child.error) {
+    console.error("❌ LLMux executable not found and 'bun' is not installed locally or not in PATH.");
     console.error("Please run 'npm install -g llmux-cli' to auto-download the binary, or install the Bun runtime.");
     process.exit(1);
   }
+  
+  process.exit(child.status ?? 1);
 }

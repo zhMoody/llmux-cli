@@ -54,6 +54,7 @@ function download(url, dest) {
         return download(response.headers.location, dest).then(resolve).catch(reject);
       }
       if (response.statusCode !== 200) {
+        fs.unlinkSync(dest);
         return reject(new Error(`Failed to download binary, HTTP status code: ${response.statusCode}`));
       }
       response.pipe(file);
