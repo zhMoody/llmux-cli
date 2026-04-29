@@ -87,12 +87,41 @@ export class GeminiAdapter implements Adapter {
 
     for (const msg of messages) {
       if (msg.role === "system") {
-        systemInstruction += (systemInstruction ? "\n" : "") + msg.content;
+        const text = Array.isArray(msg.content)
+          ? msg.content.map(p => (p as any).text || "").join("")
+          : msg.content;
+        systemInstruction += (systemInstruction ? "\n" : "") + text;
       } else {
-        contents.push({
-          role: msg.role === "assistant" ? "model" : "user",
-          parts: [{ text: msg.content }],
-        });
+        const parts: any[] = [];
+        if (Array.isArray(msg.content)) {
+          for (const part of msg.content) {
+            if ((part as any).type === "text") {
+              parts.push({ text: (part as any).text });
+            } else if ((part as any).type === "image_url") {
+              // 处理多模态（如果以后有需要）
+              const url = (part as any).image_url?.url;
+              if (url && url.startsWith("data:")) {
+                const [header, data] = url.split(",");
+                const mimeType = header.match(/:(.*?);/)?.[1] || "image/jpeg";
+                parts.push({
+                  inline_data: {
+                    mime_type: mimeType,
+                    data: data
+                  }
+                });
+              }
+            }
+          }
+        } else {
+          parts.push({ text: msg.content || "" });
+        }
+
+        if (parts.length > 0) {
+          contents.push({
+            role: msg.role === "assistant" ? "model" : "user",
+            parts,
+          });
+        }
       }
     }
 
