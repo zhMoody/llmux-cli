@@ -57,7 +57,14 @@
     "noTraffic": "No traffic",
     "calls": "Calls",
     "noActivity": "No activity yet",
-    "noDataTrend": "Start testing or connect a client to begin collecting data..."
+    "noDataTrend": "Start testing or connect clients to collect data...",
+    "monitor": {
+      "latencyPulse": "Latency Pulse",
+      "avgLag": "Avg Lag",
+      "successRate": "Success Rate",
+      "liveFeed": "Live Feed",
+      "reqs": "reqs"
+    }
   },
   "usage": {
     "title": "Usage Statistics",

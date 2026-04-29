@@ -57,7 +57,14 @@
     "noTraffic": "暂无流量",
     "calls": "次调用",
     "noActivity": "近期无活动记录",
-    "noDataTrend": "开启测试或接入客户端开始采集数据..."
+    "noDataTrend": "开启测试或接入客户端开始采集数据...",
+    "monitor": {
+      "latencyPulse": "延迟脉搏",
+      "avgLag": "平均延迟",
+      "successRate": "最近成功率",
+      "liveFeed": "实时动态",
+      "reqs": "次请求"
+    }
   },
   "usage": {
     "title": "用量统计",
