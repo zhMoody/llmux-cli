@@ -83,7 +83,7 @@ export const UsageTrendChart = ({ data, modelNames, colors, t }: UsageTrendChart
     });
   }, [data, modelNames, colors]);
 
-  const options: any = {
+  const options: ChartOptions<'line'> = {
     responsive: true,
     maintainAspectRatio: false,
     devicePixelRatio: window.devicePixelRatio || 2, // 强制高清渲染
@@ -110,7 +110,11 @@ export const UsageTrendChart = ({ data, modelNames, colors, t }: UsageTrendChart
         cornerRadius: 12,
         displayColors: true,
         callbacks: {
-          label: (context: any) => {
+          title: (tooltipItems) => {
+            const index = tooltipItems[0].dataIndex;
+            return data[index]?.displayTime || tooltipItems[0].label;
+          },
+          label: (context) => {
             return ` ${context.dataset.label}: ${(context.parsed.y || 0).toLocaleString()}`;
           }
         }
@@ -124,6 +128,7 @@ export const UsageTrendChart = ({ data, modelNames, colors, t }: UsageTrendChart
         ticks: {
           maxRotation: 0,
           autoSkip: true,
+          includeBounds: true,
           maxTicksLimit: 8,
           font: { size: 10, weight: 600 },
           color: '#94a3b8'
@@ -138,10 +143,11 @@ export const UsageTrendChart = ({ data, modelNames, colors, t }: UsageTrendChart
         ticks: {
           font: { size: 10, weight: 600 },
           color: '#94a3b8',
-          callback: (value: any) => {
-            if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
-            if (value >= 1000) return `${(value / 1000).toFixed(1)}k`;
-            return value;
+          callback: (value) => {
+            const numValue = typeof value === 'number' ? value : parseFloat(value as string);
+            if (numValue >= 1000000) return `${(numValue / 1000000).toFixed(1)}M`;
+            if (numValue >= 1000) return `${(numValue / 1000).toFixed(1)}k`;
+            return numValue;
           }
         }
       }

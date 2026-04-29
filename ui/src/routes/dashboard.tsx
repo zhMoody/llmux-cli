@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { useUsageStore } from '../stores/usage';
+import { useUsageStore, UsageLog } from '../stores/usage';
 import { useModelsStore } from '../stores/models';
 import { useAccountsStore } from '../stores/accounts';
 import { 
@@ -20,9 +20,23 @@ import { parseServerDate } from '../utils/date';
 
 const CHART_COLORS = ['#3b82f6', '#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
-const cn = (...classes: any[]) => classes.filter(Boolean).join(' ');
+const cn = (...classes: (string | boolean | undefined | null)[]) => classes.filter(Boolean).join(' ');
 
 type TimeRange = '1h' | '24h' | '7d' | '30d' | 'all';
+
+interface ProviderHealth {
+  id: string;
+  name?: string;
+  status: 'healthy' | 'degraded' | 'down' | 'unknown';
+  totalChecks: number;
+}
+
+interface BucketData {
+  timestamp: number;
+  name: string;
+  displayTime: string;
+  [key: string]: number | string;
+}
 
 export default function Dashboard() {
   const { t } = useTranslation();
@@ -30,7 +44,7 @@ export default function Dashboard() {
   const { fetchModels } = useModelsStore();
   const { fetchAccounts } = useAccountsStore();
   const { summary, recentLogs, breakdown, isLoading, fetchSummary, fetchDetails } = useUsageStore();
-  const [healthStatus, setHealthStatus] = useState<any[]>([]);
+  const [healthStatus, setHealthStatus] = useState<ProviderHealth[]>([]);
   const [timeRange, setTimeRange] = useState<TimeRange>('24h');
 
   // 计算时间范围
@@ -107,35 +121,61 @@ export default function Dashboard() {
   const modelChartData = useMemo(() => {
     if (!recentLogs.length || !top5ModelNames.length) return [];
     
-    const parseSqliteTime = (ts: string) => parseServerDate(ts).getTime();
+    // 1. 确定时间窗口的绝对起点 (必须对齐所选的 TimeRange，而不是对齐数据)
+    const now = new Date();
+    let windowStartTime = now.getTime() - 3600000; // 默认 1H
+    let bucketCount = 60; // 默认 1H 每分钟一个桶
 
-    const sortedLogs = [...recentLogs].sort((a, b) => parseSqliteTime(a.timestamp) - parseSqliteTime(b.timestamp));
-    const minLogTime = parseSqliteTime(sortedLogs[0].timestamp);
-    const lastLogTime = parseSqliteTime(sortedLogs[sortedLogs.length - 1].timestamp);
-    
-    // 强制将图表终点延伸到当前时间，增加“实时感”
-    const now = Date.now();
-    const maxTime = Math.max(lastLogTime, now);
-    
-    // 如果数据极少或跨度极小，默认显示最近 10 分钟
-    const minTime = (maxTime - minLogTime) < 60000 ? maxTime - 600000 : minLogTime;
+    switch (timeRange) {
+      case '1h': 
+        windowStartTime = now.getTime() - 3600000; 
+        bucketCount = 60; 
+        break;
+      case '24h': 
+        windowStartTime = now.getTime() - 86400000; 
+        bucketCount = 96; // 每 15 分钟一个桶，共 96 个
+        break;
+      case '7d': 
+        windowStartTime = now.getTime() - 7 * 86400000; 
+        bucketCount = 84; // 每 2 小时一个桶
+        break;
+      case '30d': 
+      case 'all': 
+        const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+        windowStartTime = now.getTime() - daysInMonth * 86400000; 
+        bucketCount = daysInMonth * 4; // 每 6 小时一个桶，动态适配
+        break;
+    }
+
+    const minTime = windowStartTime;
+    const maxTime = now.getTime();
     const timeSpan = maxTime - minTime;
-    
-    // 动态增加采样率：如果是短时间监控，提高密度以减少插值的虚假性 (最多 60 个桶)
-    const bucketCount = timeSpan < 600000 ? 40 : 25; 
     const bucketDuration = Math.max(timeSpan / bucketCount, 1000); 
     
-    // 智能选择时间格式：如果整个跨度小于 20 分钟，则显示到秒
-    const useSeconds = timeSpan < 1200000;
-    const timeOptions: Intl.DateTimeFormatOptions = useSeconds 
-      ? { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }
-      : { hour: '2-digit', minute: '2-digit', hour12: false };
+    // 智能选择时间格式
+    let timeOptions: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit', hour12: false };
+    
+    switch (timeRange) {
+      case '1h':
+        timeOptions = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
+        break;
+      case '24h':
+        timeOptions = { hour: '2-digit', minute: '2-digit', hour12: false };
+        break;
+      case '7d':
+      case '30d':
+        timeOptions = { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false };
+        break;
+      case 'all':
+        timeOptions = { year: '2-digit', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false };
+        break;
+    }
 
-    const buckets: any[] = [];
+    const buckets: BucketData[] = [];
     // 预留边缘空点，防止波形突然垂直切断
     for (let i = 0; i <= bucketCount; i++) {
         const bucketTime = minTime + i * bucketDuration;
-        const bucketData: any = {
+        const bucketData: BucketData = {
             timestamp: bucketTime,
             name: new Date(bucketTime).toLocaleTimeString([], timeOptions),
             displayTime: new Date(bucketTime).toLocaleString(),
@@ -144,18 +184,19 @@ export default function Dashboard() {
         buckets.push(bucketData);
     }
 
-    sortedLogs.forEach(log => {
+    recentLogs.forEach((log: UsageLog) => {
       const modelName = log.model;
       if (!top5ModelNames.includes(modelName)) return;
       
-      const logTime = parseSqliteTime(log.timestamp);
-      if (logTime < minTime) return; // 忽略超出范围的旧数据
+      const logTime = parseServerDate(log.timestamp).getTime();
+      if (logTime < minTime || logTime > maxTime) return; // 忽略超出窗口的数据
       
       const bucketIndex = Math.min(Math.floor((logTime - minTime) / bucketDuration), bucketCount);
       
       if (buckets[bucketIndex]) {
          const tokens = (log.input_tokens || 0) + (log.output_tokens || 0);
-         buckets[bucketIndex][modelName] += tokens;
+         const currentValue = buckets[bucketIndex][modelName] as number;
+         buckets[bucketIndex][modelName] = currentValue + tokens;
       }
     });
 
@@ -177,7 +218,7 @@ export default function Dashboard() {
                 { id: '1h', label: '1H' },
                 { id: '24h', label: '24H' },
                 { id: '7d', label: '7D' },
-                { id: 'all', label: 'ALL' }
+                { id: 'all', label: '1M' }
               ].map((r) => (
                 <button
                   key={r.id}

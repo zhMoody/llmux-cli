@@ -1,11 +1,19 @@
 import React from 'react';
 import { Activity } from 'lucide-react';
+import { TFunction } from 'i18next';
 
-const cn = (...classes: any[]) => classes.filter(Boolean).join(' ');
+const cn = (...classes: (string | boolean | undefined | null)[]) => classes.filter(Boolean).join(' ');
+
+export interface ProviderHealth {
+  id: string;
+  name?: string;
+  status: 'healthy' | 'degraded' | 'down' | 'unknown';
+  totalChecks: number;
+}
 
 interface HealthStatusListProps {
-  healthStatus: any[];
-  t: (key: string, options?: any) => string;
+  healthStatus: ProviderHealth[];
+  t: TFunction;
 }
 
 export const HealthStatusList = ({ healthStatus, t }: HealthStatusListProps) => {
@@ -16,7 +24,7 @@ export const HealthStatusList = ({ healthStatus, t }: HealthStatusListProps) => 
         {t('dashboard.providerStatus')}
       </div>
       <div className="space-y-3 overflow-y-auto max-h-[220px] no-scrollbar">
-        {healthStatus.map((v: any) => (
+        {healthStatus.map((v) => (
           <div key={v.id} className="flex items-center justify-between p-3 bg-muted/40 rounded-xl border border-border/50 group hover:border-primary/20 transition-all">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-background flex items-center justify-center font-bold text-[10px] border border-border group-hover:scale-110 transition-transform">

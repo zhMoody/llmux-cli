@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { History, Zap, Activity, Clock } from 'lucide-react';
 import { parseServerDate } from '../../utils/date';
+import { useUsageStore, UsageLog } from '../../stores/usage';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -11,6 +12,7 @@ import {
   ChartOptions
 } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
+import { TFunction } from 'i18next';
 
 // 注册子组件
 ChartJS.register(
@@ -20,7 +22,7 @@ ChartJS.register(
   Tooltip
 );
 
-const cn = (...classes: any[]) => classes.filter(Boolean).join(' ');
+const cn = (...classes: (string | boolean | undefined | null)[]) => classes.filter(Boolean).join(' ');
 
 interface ActivityItemProps {
   model: string;
@@ -55,8 +57,8 @@ const ActivityItem = ({ model, time, status, latency, provider }: ActivityItemPr
 );
 
 interface RecentActivityListProps {
-  recentLogs: any[];
-  t: (key: string) => string;
+  recentLogs: UsageLog[];
+  t: TFunction;
   onViewReports: () => void;
 }
 

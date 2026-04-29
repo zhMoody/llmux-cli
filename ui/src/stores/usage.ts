@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-interface UsageSummary {
+export interface UsageSummary {
   totalInput: number;
   totalOutput: number;
   avgLatency: number;
@@ -8,7 +8,7 @@ interface UsageSummary {
   successRequests: number;
 }
 
-interface UsageLog {
+export interface UsageLog {
   id: number;
   timestamp: string;
   account_id: number;
@@ -21,13 +21,13 @@ interface UsageLog {
   error_message: string | null;
 }
 
-interface UsageBreakdown {
+export interface UsageBreakdown {
   byModel: any[];
   byProvider: any[];
   byAccount: any[];
 }
 
-interface UsageState {
+export interface UsageState {
   summary: UsageSummary | null;
   recentLogs: UsageLog[];
   breakdown: UsageBreakdown | null;

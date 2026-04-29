@@ -1,3 +1,4 @@
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -8,7 +9,9 @@ import {
   Info,
   ChevronRight,
   Zap,
-  Key as KeyIcon
+  Key as KeyIcon,
+  Menu,
+  X
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import Accounts from './routes/accounts';
@@ -45,7 +48,7 @@ const LanguageSwitcher = () => {
   );
 };
 
-const NavItem = ({ to, icon: Icon, labelKey }: { to: string; icon: any; labelKey: string }) => {
+const NavItem = ({ to, icon: Icon, labelKey, onClick }: { to: string; icon: any; labelKey: string; onClick?: () => void }) => {
   const location = useLocation();
   const isActive = location.pathname === to;
   const { t } = useTranslation();
@@ -53,6 +56,7 @@ const NavItem = ({ to, icon: Icon, labelKey }: { to: string; icon: any; labelKey
   return (
     <Link
       to={to}
+      onClick={onClick}
       className={cn(
         "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
         isActive 
@@ -69,67 +73,104 @@ const NavItem = ({ to, icon: Icon, labelKey }: { to: string; icon: any; labelKey
 
 function App() {
   const { t } = useTranslation();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const location = useLocation();
+
+  // 路由跳转时自动关闭侧边栏 (移动端)
+  useEffect(() => {
+    setIsSidebarOpen(false);
+  }, [location.pathname]);
 
   return (
-    <Router>
-      <div className="flex h-screen bg-background text-foreground">
-        {/* Sidebar */}
-        <aside className="w-64 border-r border-border bg-card flex flex-col">
-          <div className="px-6 py-8 flex items-center gap-3">
-             <div className="bg-primary text-primary-foreground p-1.5 rounded-lg">
-                <Zap size={20} fill="currentColor" />
-             </div>
-             <h1 className="text-xl font-bold tracking-tight">LLMux</h1>
+    <div className="flex h-screen bg-background text-foreground overflow-hidden">
+      {/* Mobile Overlay */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 lg:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside className={cn(
+        "fixed inset-y-0 left-0 w-64 border-r border-border bg-card flex flex-col z-50 transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0",
+        isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+      )}>
+        <div className="px-6 py-8 flex items-center justify-between">
+           <div className="flex items-center gap-3">
+              <div className="bg-primary text-primary-foreground p-1.5 rounded-lg">
+                 <Zap size={20} fill="currentColor" />
+              </div>
+              <h1 className="text-xl font-bold tracking-tight">LLMux</h1>
+           </div>
+           <button 
+             onClick={() => setIsSidebarOpen(false)}
+             className="p-2 hover:bg-muted rounded-lg lg:hidden"
+           >
+             <X size={20} />
+           </button>
+        </div>
+
+        <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
+          <div className="text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest px-3 mb-2">{t('common.menuCore')}</div>
+          <NavItem to="/" icon={LayoutDashboard} labelKey="common.dashboard" />
+          <NavItem to="/accounts" icon={Users} labelKey="common.accounts" />
+          <NavItem to="/models" icon={Box} labelKey="common.models" />
+          <NavItem to="/keys" icon={KeyIcon} labelKey="common.keys" />
+          <NavItem to="/usage" icon={Activity} labelKey="common.usage" />
+          
+          <div className="pt-6 text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest px-3 mb-2">{t('common.menuPref')}</div>
+          <NavItem to="/settings" icon={Settings} labelKey="common.settings" />
+          <NavItem to="/about" icon={Info} labelKey="common.about" />
+        </nav>
+
+        <div className="p-4 border-t border-border mt-auto">
+           <div className="flex items-center gap-2 p-2 px-3 bg-muted/50 rounded-lg text-xs text-muted-foreground">
+              <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+              {t('common.systemNormal')}
+           </div>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col overflow-hidden w-full">
+        <header className="h-14 border-b border-border flex items-center px-4 lg:px-10 bg-card/50 backdrop-blur-md sticky top-0 z-30">
+          <button 
+            onClick={() => setIsSidebarOpen(true)}
+            className="p-2 -ml-2 mr-2 hover:bg-muted rounded-lg lg:hidden"
+          >
+            <Menu size={20} />
+          </button>
+          <div className="flex-1">
+            <h2 className="text-sm font-bold lg:hidden">LLMux</h2>
           </div>
-
-          <nav className="flex-1 px-3 space-y-1">
-            <div className="text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest px-3 mb-2">{t('common.menuCore')}</div>
-            <NavItem to="/" icon={LayoutDashboard} labelKey="common.dashboard" />
-            <NavItem to="/accounts" icon={Users} labelKey="common.accounts" />
-            <NavItem to="/models" icon={Box} labelKey="common.models" />
-            <NavItem to="/keys" icon={KeyIcon} labelKey="common.keys" />
-            <NavItem to="/usage" icon={Activity} labelKey="common.usage" />
-            
-            <div className="pt-6 text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest px-3 mb-2">{t('common.menuPref')}</div>
-            <NavItem to="/settings" icon={Settings} labelKey="common.settings" />
-            <NavItem to="/about" icon={Info} labelKey="common.about" />
-          </nav>
-
-          <div className="p-4 border-t border-border mt-auto">
-             <div className="flex items-center gap-2 p-2 px-3 bg-muted/50 rounded-lg text-xs text-muted-foreground">
-                <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                {t('common.systemNormal')}
-             </div>
+          <div className="flex items-center gap-4">
+             <LanguageSwitcher />
           </div>
-        </aside>
+        </header>
 
-        {/* Main Content */}
-        <main className="flex-1 flex flex-col overflow-hidden">
-          <header className="h-14 border-b border-border flex items-center px-6 lg:px-10 bg-card/50 backdrop-blur-md sticky top-0 z-40">
-            <div className="flex-1">
-            </div>
-            <div className="flex items-center gap-4">
-               <LanguageSwitcher />
-            </div>
-          </header>
-
-          <div className="flex-1 overflow-y-auto">
-            <div className="p-6 lg:p-10 max-w-[1600px] mx-auto w-full">
-              <Routes>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/accounts" element={<Accounts />} />
-                <Route path="/models" element={<Models />} />
-                <Route path="/keys" element={<KeysPage />} />
-                <Route path="/usage" element={<Usage />} />
-                <Route path="/settings" element={<SettingsPage />} />
-                <Route path="/about" element={<About />} />
-              </Routes>
-            </div>
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-4 lg:p-10 max-w-[1600px] mx-auto w-full">
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/accounts" element={<Accounts />} />
+              <Route path="/models" element={<Models />} />
+              <Route path="/keys" element={<KeysPage />} />
+              <Route path="/usage" element={<Usage />} />
+              <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/about" element={<About />} />
+            </Routes>
           </div>
-        </main>
-      </div>
-    </Router>
+        </div>
+      </main>
+    </div>
   );
 }
 
-export default App;
+export default function Root() {
+  return (
+    <Router>
+      <App />
+    </Router>
+  );
+}
