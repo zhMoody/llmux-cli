@@ -27,6 +27,7 @@ export class OpenAIAdapter implements Adapter {
     const baseUrl = account.base_url || "https://api.openai.com/v1";
     const response = await fetch(`${baseUrl}/models`, {
       headers: { Authorization: `Bearer ${account.api_key}` },
+      signal: AbortSignal.timeout(30000)
     });
     if (!response.ok) return [];
     const data = await response.json() as any;

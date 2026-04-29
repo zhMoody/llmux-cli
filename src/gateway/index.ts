@@ -25,6 +25,7 @@ export function startGateway() {
 
   const server = Bun.serve({
     port: effectivePort,
+    idleTimeout: 60, // 增加超时时间，防止同步大量模型时请求中断
     async fetch(req) {
       const url = new URL(req.url);
 

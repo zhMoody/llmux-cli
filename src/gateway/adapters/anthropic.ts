@@ -52,6 +52,7 @@ export class AnthropicAdapter implements Adapter {
         "x-api-key": account.api_key,
         "anthropic-version": "2023-06-01"
       },
+      signal: AbortSignal.timeout(30000)
     });
     if (!response.ok) return [];
     const data = await response.json() as any;

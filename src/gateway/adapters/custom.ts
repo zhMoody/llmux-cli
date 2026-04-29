@@ -48,7 +48,8 @@ export class CustomAdapter implements Adapter {
       const response = await fetch(url, {
         headers: {
           "Authorization": `Bearer ${account.api_key}`,
-        }
+        },
+        signal: AbortSignal.timeout(30000) // 15秒超时，防止供应商 API 拖累网关
       });
       
       if (!response.ok) {

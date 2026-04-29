@@ -57,7 +57,9 @@ export class GeminiAdapter implements Adapter {
   async listModels(account: Account): Promise<any[]> {
     const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${account.api_key}`;
     try {
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        signal: AbortSignal.timeout(30000)
+      });
       if (!response.ok) {
         const errText = await response.text();
         console.error(`[Gemini Adapter] ListModels failed (${response.status}):`, errText);
