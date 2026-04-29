@@ -3,6 +3,8 @@ import { cac } from "cac";
 import { startCommand } from "./commands/start.js";
 import { env } from "../env.js";
 
+import packageJson from "../../package.json" with { type: "json" };
+
 const cli = cac("llmux");
 
 cli
@@ -16,17 +18,19 @@ cli
 cli
   .command("stop", "Stop the running llmux service")
   .action(() => {
-    console.log("Stop functionality not yet implemented (use Ctrl+C for now).");
+    console.log("Stop functionality is reserved for future background service (daemon) management.");
+    console.log("For now, please use Ctrl+C to stop the process.");
   });
 
 cli
   .command("status", "Check the status of llmux service")
   .action(() => {
-    console.log("LLMux status: running (assuming this process is active)");
+    console.log("Status functionality is reserved for checking background service (daemon) state.");
+    console.log("Current process is running in the foreground.");
   });
 
 cli.help();
-cli.version("1.0.0");
+cli.version(packageJson.version);
 
 // 如果没有传入任何命令（例如双击exe运行），默认执行 start 命令
 if (process.argv.length === 2) {
