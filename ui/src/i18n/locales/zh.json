@@ -265,7 +265,10 @@
     "revokeKey": "删除密钥",
     "revoke": "删除",
     "noKeysYet": "暂未生成任何 API 密钥",
-    "copyBase": "复制 Base URL"
+    "copyBase": "复制 Base URL",
+    "noAliasesHint": "暂无可用别名。请先在【模型管理】中为模型创建别名，然后才能在此授权。",
+    "emptyAuthWarning": "检测到权限异常",
+    "emptyAuthDesc": "以下密钥所授权的所有模型别名均已被删除，目前这些密钥处于【不可用】状态，请尽快重新编辑授权："
   },
   "auth": {
     "webLogin": "官方会话登录",

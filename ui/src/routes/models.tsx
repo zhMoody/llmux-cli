@@ -207,7 +207,7 @@ export default function Models() {
                   <div key={a.id} className="p-2.5 bg-card border border-border rounded-xl flex items-center justify-between group hover:border-primary/30 transition-all">
                     <div className="flex items-center gap-2 min-w-0">
                         <div className="flex items-center gap-1 group/alias">
-                           <span className="px-1.5 py-0.5 bg-primary/10 text-primary rounded text-[9px] font-black uppercase truncate">
+                           <span className="px-2 py-0.5 bg-primary/10 text-primary rounded text-[11px] font-black uppercase truncate shadow-sm border border-primary/5">
                              {a.alias}
                            </span>
                            <CopyButton value={a.alias} size={10} className="p-1 opacity-0 group-hover/alias:opacity-100 transition-opacity" />

@@ -36,6 +36,8 @@ export default function KeysPage() {
   const [newKeyData, setNewKeyData] = useState({ name: '', allowedModels: '*' as '*' | string[] });
   const [generatedKey, setGeneratedKey] = useState<string | null>(null);
   const [visibleKeys, setVisibleKeys] = useState<Record<number, boolean>>({});
+  const [showWarningModal, setShowWarningModal] = useState(false);
+  const [warningKeyNames, setWarningKeyNames] = useState<string[]>([]);
 
   const baseUrl = typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.host}/v1` : 'http://localhost:25975/v1';
 
@@ -44,6 +46,17 @@ export default function KeysPage() {
     fetchModels();
     fetchAliases();
   }, []);
+
+  useEffect(() => {
+    if (!isLoading && keys.length > 0) {
+      // 检查是否有由于别名删除导致的“空授权”Key (且不是 '*' 全部授权)
+      const emptyKeys = keys.filter(k => k.allowed_models !== '*' && JSON.parse(k.allowed_models).length === 0);
+      if (emptyKeys.length > 0) {
+        setWarningKeyNames(emptyKeys.map(k => k.name));
+        setShowWarningModal(true);
+      }
+    }
+  }, [isLoading, keys]);
 
   const handleCreateOrUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,10 +81,8 @@ export default function KeysPage() {
     setVisibleKeys(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const sortedModels = [
-    ...aliases.map(a => ({ id: a.alias, isAlias: true, provider: a.provider_id })),
-    ...availableModels.filter(m => !aliases.some(a => a.alias === m.id)).map(m => ({ id: m.id, isAlias: false, provider: m.owned_by }))
-  ];
+  // 限制：只能选择已创建别名的模型
+  const sortedModels = aliases.map(a => ({ id: a.alias, provider: a.provider_id }));
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -148,9 +159,9 @@ export default function KeysPage() {
                 {k.allowed_models !== '*' && (
                    <div className="flex flex-wrap gap-1.5 mt-2">
                       {JSON.parse(k.allowed_models).map((m: string) => (
-                         <div key={m} className="flex items-center gap-1 pl-2 pr-1 py-0.5 bg-primary/5 text-primary/70 text-[9px] font-bold rounded border border-primary/10 group/tag hover:bg-primary/10 transition-colors">
+                         <div key={m} className="flex items-center gap-1.5 pl-2.5 pr-1 py-0.5 bg-primary/5 text-primary/80 text-[11px] font-black rounded border border-primary/10 group/tag hover:bg-primary/10 transition-colors shadow-sm">
                             {m}
-                            <CopyButton value={m} size={8} className="p-0.5 opacity-0 group-hover/tag:opacity-100 transition-opacity" />
+                            <CopyButton value={m} size={9} className="p-0.5 opacity-0 group-hover/tag:opacity-100 transition-opacity" />
                          </div>
                       ))}
                    </div>
@@ -282,31 +293,35 @@ export default function KeysPage() {
 
             {newKeyData.allowedModels !== '*' && (
               <div className="max-h-48 overflow-y-auto p-2 border border-border rounded-xl space-y-1 bg-muted/20">
-                {sortedModels.map(item => (
-                  <label key={item.id} className="flex items-center gap-3 p-2 hover:bg-muted rounded-lg cursor-pointer transition-colors group">
-                    <input 
-                      type="checkbox"
-                      checked={Array.isArray(newKeyData.allowedModels) && newKeyData.allowedModels.includes(item.id)}
-                      onChange={(e) => {
-                        const current = Array.isArray(newKeyData.allowedModels) ? newKeyData.allowedModels : [];
-                        if (e.target.checked) {
-                          setNewKeyData({...newKeyData, allowedModels: [...current, item.id]});
-                        } else {
-                          setNewKeyData({...newKeyData, allowedModels: current.filter(x => x !== item.id)});
-                        }
-                      }}
-                      className="w-4 h-4 rounded border-border text-primary focus:ring-primary/20"
-                    />
-                    <div className="flex flex-1 items-center justify-between min-w-0">
-                      <span className="text-xs font-medium truncate">{item.id}</span>
-                      {item.isAlias ? (
-                        <span className="shrink-0 text-[8px] font-black bg-primary/10 text-primary px-1.5 py-0.5 rounded uppercase tracking-tighter">{t('common.alias')}</span>
-                      ) : (
-                        <span className="shrink-0 text-[8px] font-bold text-muted-foreground/40 uppercase">{item.provider}</span>
-                      )}
-                    </div>
-                  </label>
-                ))}
+                {sortedModels.length > 0 ? (
+                  sortedModels.map(item => (
+                    <label key={item.id} className="flex items-center gap-3 p-2 hover:bg-muted rounded-lg cursor-pointer transition-colors group">
+                      <input 
+                        type="checkbox"
+                        checked={Array.isArray(newKeyData.allowedModels) && newKeyData.allowedModels.includes(item.id)}
+                        onChange={(e) => {
+                          const current = Array.isArray(newKeyData.allowedModels) ? newKeyData.allowedModels : [];
+                          if (e.target.checked) {
+                            setNewKeyData({...newKeyData, allowedModels: [...current, item.id]});
+                          } else {
+                            setNewKeyData({...newKeyData, allowedModels: current.filter(x => x !== item.id)});
+                          }
+                        }}
+                        className="w-4 h-4 rounded border-border text-primary focus:ring-primary/20"
+                      />
+                      <div className="flex flex-1 items-center justify-between min-w-0">
+                        <span className="text-xs font-medium truncate">{item.id}</span>
+                        <span className="shrink-0 text-[10px] font-black bg-primary/10 text-primary px-2 py-0.5 rounded uppercase tracking-tight shadow-sm border border-primary/5">{t('common.alias')}</span>
+                      </div>
+                    </label>
+                  ))
+                ) : (
+                  <div className="py-8 text-center px-4">
+                    <p className="text-xs text-muted-foreground italic leading-relaxed">
+                      {t('keys.noAliasesHint')}
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -343,6 +358,35 @@ export default function KeysPage() {
         confirmText={t('keys.revoke')}
         variant="danger"
       />
+
+      {/* 空权限异常警告 Modal */}
+      <Dialog
+        isOpen={showWarningModal}
+        onClose={() => setShowWarningModal(false)}
+        title={t('keys.emptyAuthWarning')}
+      >
+        <div className="space-y-4">
+          <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex gap-3 text-amber-700">
+             <ShieldCheck size={20} className="shrink-0" />
+             <div className="space-y-2">
+                <p className="text-sm font-bold">{t('keys.emptyAuthDesc')}</p>
+                <div className="flex flex-wrap gap-2">
+                   {warningKeyNames.map(name => (
+                     <span key={name} className="px-2 py-1 bg-amber-500/20 rounded text-[10px] font-black uppercase tracking-tight">
+                        {name}
+                     </span>
+                   ))}
+                </div>
+             </div>
+          </div>
+          <button 
+            onClick={() => setShowWarningModal(false)}
+            className="w-full py-3 bg-primary text-primary-foreground rounded-xl font-bold shadow-lg shadow-primary/20 transition-all hover:opacity-90"
+          >
+            {t('common.done')}
+          </button>
+        </div>
+      </Dialog>
     </div>
   );
 }

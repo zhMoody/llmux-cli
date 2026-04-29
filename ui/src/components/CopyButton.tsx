@@ -35,7 +35,7 @@ export const CopyButton: React.FC<CopyButtonProps> = ({
       {copied ? (
         <Check size={size} className="text-green-500 animate-in zoom-in duration-200" />
       ) : (
-        <Copy size={size} className="text-muted-foreground hover:text-foreground" />
+        <Copy size={size} className="transition-colors" />
       )}
     </button>
   );

@@ -56,6 +56,30 @@ export async function setModelAlias(req: Request) {
  */
 export async function deleteModelAlias(id: string) {
   try {
+    // 1. 获取要删除的别名名称
+    const aliasRecord = db.query("SELECT alias FROM model_aliases WHERE id = ?").get(id) as { alias: string } | undefined;
+    if (!aliasRecord) {
+      return Response.json({ error: "Alias not found" }, { status: 404 });
+    }
+    const aliasName = aliasRecord.alias;
+
+    // 2. 同步清理 API Keys 的授权列表
+    const apiKeys = db.query("SELECT id, allowed_models FROM api_keys").all() as { id: number, allowed_models: string }[];
+    for (const key of apiKeys) {
+      if (!key.allowed_models || key.allowed_models === '*') continue;
+      try {
+        const models = JSON.parse(key.allowed_models) as string[];
+        if (models.includes(aliasName)) {
+          const updatedModels = models.filter(m => m !== aliasName);
+          db.prepare("UPDATE api_keys SET allowed_models = ? WHERE id = ?").run(JSON.stringify(updatedModels), key.id);
+          console.log(`[Sync] Removed alias "${aliasName}" from API Key ID: ${key.id}`);
+        }
+      } catch (e) {
+        // 忽略非 JSON 格式或解析错误
+      }
+    }
+
+    // 3. 执行删除别名
     const stmt = db.prepare("DELETE FROM model_aliases WHERE id = ?");
     const info = stmt.run(id);
     
@@ -63,7 +87,7 @@ export async function deleteModelAlias(id: string) {
       return Response.json({ error: "Alias not found" }, { status: 404 });
     }
 
-    return Response.json({ success: true, message: "Alias deleted successfully" });
+    return Response.json({ success: true, message: "Alias deleted and API Keys synced successfully" });
   } catch (err: any) {
     return Response.json({ error: err.message }, { status: 500 });
   }
