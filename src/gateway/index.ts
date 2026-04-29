@@ -18,6 +18,8 @@ export function startGateway() {
   const server = Bun.serve({
     port: env.PORT,
     async fetch(req) {
+      const url = new URL(req.url);
+
       // 通用错误响应适配器
     const sendError = (message: string, type: string = "invalid_request_error", status: number = 400) => {
       const isAnthropic = !!req.headers.get("x-api-key");
@@ -39,8 +41,6 @@ export function startGateway() {
       }, { status });
     };
 
-    const url = new URL(req.url);
-
       if (url.pathname.includes("/export") && url.pathname.startsWith("/api/accounts/")) {
         const id = url.pathname.split("/").filter(Boolean)[2];
         if (id && req.method === "GET") {
@@ -51,9 +51,11 @@ export function startGateway() {
 
       // 1. 鉴权逻辑
       // 仅拦截外部 API 路径 (/v1/)，管理接口(/api/)和静态文件放行
-      if (url.pathname.startsWith("/v1/")) {
+      const normalizedPath = url.pathname.replace(/^\/v1\/v1\//, "/v1/");
+      
+      if (normalizedPath.startsWith("/v1/")) {
         let requestedModel: string | undefined;
-        if ((url.pathname === "/v1/chat/completions" || url.pathname === "/v1/messages") && req.method === "POST") {
+        if ((normalizedPath === "/v1/chat/completions" || normalizedPath === "/v1/messages") && req.method === "POST") {
           try {
             const body = await req.clone().json() as any;
             requestedModel = body.model;
@@ -67,16 +69,17 @@ export function startGateway() {
       }
 
       // 2. API 路由分发
-      if (req.method === "POST" && url.pathname === "/v1/chat/completions") {
+      if (req.method === "POST" && (normalizedPath === "/v1/chat/completions")) {
         return handleChatRoute(req);
       }
 
-      if (req.method === "POST" && url.pathname === "/v1/messages") {
+      if (req.method === "POST" && (normalizedPath === "/v1/messages")) {
         return anthropicIngress.handleMessages(req);
       }
 
-      if (req.method === "GET" && url.pathname === "/v1/models") {
-        const isAnthropic = !!req.headers.get("x-api-key");
+      if (req.method === "GET" && (normalizedPath === "/v1/models")) {
+        const isAnthropic = !!req.headers.get("x-api-key") || !!req.headers.get("anthropic-version");
+        
         if (isAnthropic) {
           return anthropicIngress.handleModels();
         }

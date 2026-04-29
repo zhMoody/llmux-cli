@@ -18,6 +18,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Dialog, ConfirmDialog } from '../components/Modal';
 import { CopyButton } from '../components/CopyButton';
+import { parseServerDate } from '../utils/date';
 
 function cn(...classes: (string | undefined | null | false)[]) {
   return classes.filter(Boolean).join(' ');
@@ -282,7 +283,7 @@ export default function Models() {
                 )}
                 {testResults[model.id]?.lastChecked && (
                   <span className="text-[9px] text-muted-foreground/60 font-medium">
-                    {new Date(testResults[model.id]!.lastChecked!).toLocaleString(i18n.language, { 
+                    {parseServerDate(testResults[model.id]!.lastChecked!).toLocaleString(i18n.language, { 
                       month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
                     })}
                   </span>

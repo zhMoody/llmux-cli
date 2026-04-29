@@ -19,6 +19,8 @@ export class AnthropicIngressService {
         top_p: anthropicReq.top_p,
         stream: anthropicReq.stream,
         stop: anthropicReq.stop_sequences,
+        tools: anthropicReq.tools ? this.mapToolsToOpenAI(anthropicReq.tools) : undefined,
+        tool_choice: anthropicReq.tool_choice ? this.mapToolChoiceToOpenAI(anthropicReq.tool_choice) : undefined,
       };
 
       // 2. 调用调度器
@@ -75,23 +77,101 @@ export class AnthropicIngressService {
       result.push({ role: "system", content: system });
     }
     for (const msg of messages) {
-      result.push({
-        role: msg.role,
-        content: msg.content,
-      });
+      if (typeof msg.content === "string") {
+        result.push({
+          role: msg.role,
+          content: msg.content,
+        });
+      } else if (Array.isArray(msg.content)) {
+        // 处理 Anthropic 的内容块数组 (包含 text, tool_use, tool_result)
+        const textParts: string[] = [];
+        const toolCalls: any[] = [];
+
+        for (const block of msg.content) {
+          if (block.type === "text") {
+            textParts.push(block.text);
+          } else if (block.type === "tool_use") {
+            toolCalls.push({
+              id: block.id,
+              type: "function",
+              function: {
+                name: block.name,
+                arguments: JSON.stringify(block.input),
+              },
+            });
+          } else if (block.type === "tool_result") {
+            // Anthropic 的 tool_result 对应 OpenAI 的 tool 角色消息
+            result.push({
+              role: "tool",
+              content: typeof block.content === "string" ? block.content : JSON.stringify(block.content),
+              tool_call_id: block.tool_use_id,
+            } as any);
+          }
+        }
+
+        if (textParts.length > 0 || toolCalls.length > 0) {
+          result.push({
+            role: msg.role,
+            content: textParts.join("\n") || null,
+            tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
+          } as any);
+        }
+      }
     }
     return result;
   }
 
+  private mapToolsToOpenAI(anthropicTools: any[]): any[] {
+    return anthropicTools.map((tool) => ({
+      type: "function",
+      function: {
+        name: tool.name,
+        description: tool.description,
+        parameters: tool.input_schema,
+      },
+    }));
+  }
+
+  private mapToolChoiceToOpenAI(anthropicChoice: any): any {
+    if (typeof anthropicChoice === "string") return anthropicChoice;
+    if (anthropicChoice.type === "auto") return "auto";
+    if (anthropicChoice.type === "any") return "required";
+    if (anthropicChoice.type === "tool") {
+      return {
+        type: "function",
+        function: { name: anthropicChoice.name },
+      };
+    }
+    return "auto";
+  }
+
   private async handleNormalResponse(response: Response, model: string): Promise<Response> {
     const data = await response.json() as any;
+    const choice = data.choices[0];
+    const content: any[] = [];
+
+    if (choice.message?.content) {
+      content.push({ type: "text", text: choice.message.content });
+    }
+
+    if (choice.message?.tool_calls) {
+      for (const toolCall of choice.message.tool_calls) {
+        content.push({
+          type: "tool_use",
+          id: toolCall.id,
+          name: toolCall.function.name,
+          input: JSON.parse(toolCall.function.arguments),
+        });
+      }
+    }
+
     const anthropicResponse = {
       id: data.id,
       type: "message",
       role: "assistant",
       model: model,
-      content: [{ type: "text", text: data.choices[0]?.message?.content || "" }],
-      stop_reason: data.choices[0]?.finish_reason === "stop" ? "end_turn" : data.choices[0]?.finish_reason,
+      content: content,
+      stop_reason: choice.finish_reason === "tool_calls" ? "tool_use" : (choice.finish_reason === "stop" ? "end_turn" : choice.finish_reason),
       stop_sequence: null,
       usage: {
         input_tokens: data.usage?.prompt_tokens || 0,
@@ -110,6 +190,7 @@ export class AnthropicIngressService {
 
     (async () => {
       let messageId = "msg_" + Math.random().toString(36).slice(2);
+      let startedToolIndices = new Set<number>();
       
       // 发送消息开始事件
       await writer.write(encoder.encode(`event: message_start\ndata: ${JSON.stringify({
@@ -138,21 +219,54 @@ export class AnthropicIngressService {
           
           try {
             const openAIIn = JSON.parse(trimmed.slice(6));
-            const content = openAIIn.choices[0]?.delta?.content;
+            const delta = openAIIn.choices[0]?.delta;
             
-            if (content) {
+            // 1. 处理文本增量
+            if (delta?.content) {
               await writer.write(encoder.encode(`event: content_block_delta\ndata: ${JSON.stringify({
                 type: "content_block_delta",
                 index: 0,
-                delta: { type: "text_delta", text: content }
+                delta: { type: "text_delta", text: delta.content }
               })}\n\n`));
+            }
+
+            // 2. 处理工具调用增量
+            if (delta?.tool_calls) {
+              for (const tc of delta.tool_calls) {
+                const idx = tc.index + 1; // 文本是 index 0，所以工具从 1 开始
+                if (!startedToolIndices.has(tc.index)) {
+                  startedToolIndices.add(tc.index);
+                  // 发送工具开始事件
+                  await writer.write(encoder.encode(`event: content_block_start\ndata: ${JSON.stringify({
+                    type: "content_block_start",
+                    index: idx,
+                    content_block: {
+                      type: "tool_use",
+                      id: tc.id,
+                      name: tc.function?.name,
+                    }
+                  })}\n\n`));
+                }
+
+                if (tc.function?.arguments) {
+                  // 发送工具参数增量
+                  await writer.write(encoder.encode(`event: content_block_delta\ndata: ${JSON.stringify({
+                    type: "content_block_delta",
+                    index: idx,
+                    delta: { type: "input_json_delta", partial_json: tc.function.arguments }
+                  })}\n\n`));
+                }
+              }
             }
 
             const finishReason = openAIIn.choices[0]?.finish_reason;
             if (finishReason) {
               await writer.write(encoder.encode(`event: message_delta\ndata: ${JSON.stringify({
                 type: "message_delta",
-                delta: { stop_reason: finishReason === "stop" ? "end_turn" : finishReason, stop_sequence: null },
+                delta: { 
+                  stop_reason: finishReason === "tool_calls" ? "tool_use" : (finishReason === "stop" ? "end_turn" : finishReason), 
+                  stop_sequence: null 
+                },
                 usage: { output_tokens: 0 }
               })}\n\n`));
             }
@@ -160,7 +274,11 @@ export class AnthropicIngressService {
         }
       }
 
+      // 结束所有内容块
       await writer.write(encoder.encode(`event: content_block_stop\ndata: ${JSON.stringify({ type: "content_block_stop", index: 0 })}\n\n`));
+      for (const idx of startedToolIndices) {
+        await writer.write(encoder.encode(`event: content_block_stop\ndata: ${JSON.stringify({ type: "content_block_stop", index: idx + 1 })}\n\n`));
+      }
       await writer.write(encoder.encode(`event: message_stop\ndata: ${JSON.stringify({ type: "message_stop" })}\n\n`));
       await writer.close();
     })();

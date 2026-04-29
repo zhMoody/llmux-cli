@@ -1,5 +1,5 @@
-import React from 'react';
 import { History } from 'lucide-react';
+import { parseServerDate } from '../../utils/date';
 
 const cn = (...classes: any[]) => classes.filter(Boolean).join(' ');
 
@@ -53,7 +53,7 @@ export const RecentActivityList = ({ recentLogs, t, onViewReports }: RecentActiv
           <ActivityItem 
             key={log.id}
             model={log.model}
-            time={new Date(log.timestamp).toLocaleTimeString()}
+            time={parseServerDate(log.timestamp).toLocaleTimeString()}
             status={log.success === 1 ? 'success' : 'error'}
             latency={`${log.latency_ms}ms`}
           />

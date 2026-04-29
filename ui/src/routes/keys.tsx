@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { Dialog, ConfirmDialog } from '../components/Modal';
 import { CopyButton } from '../components/CopyButton';
+import { parseServerDate } from '../utils/date';
 
 function cn(...classes: (string | undefined | null | false)[]) {
   return classes.filter(Boolean).join(' ');
@@ -125,7 +126,9 @@ export default function KeysPage() {
                   <h3 className="font-bold text-base">{k.name}</h3>
                   <span className="text-[10px] bg-muted px-2 py-0.5 rounded-full font-bold text-muted-foreground uppercase tracking-tight flex items-center gap-1">
                     <Calendar size={10} />
-                    {new Date(k.created_at).toLocaleDateString()}
+                    {parseServerDate(k.created_at).toLocaleString(undefined, {
+                      year: 'numeric', month: 'short', day: 'numeric'
+                    })}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 font-mono text-sm bg-muted/30 p-2 rounded-lg border border-border/50 group/key max-w-2xl">

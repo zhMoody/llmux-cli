@@ -16,6 +16,7 @@ import { HealthStatusList } from '../components/Dashboard/HealthStatusList';
 import { UsageDistribution } from '../components/Dashboard/UsageDistribution';
 import { UsageTrendChart } from '../components/Dashboard/UsageTrendChart';
 import { RecentActivityList } from '../components/Dashboard/RecentActivityList';
+import { parseServerDate } from '../utils/date';
 
 const CHART_COLORS = ['#3b82f6', '#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
@@ -106,16 +107,7 @@ export default function Dashboard() {
   const modelChartData = useMemo(() => {
     if (!recentLogs.length || !top5ModelNames.length) return [];
     
-    // SQLite 默认的 CURRENT_TIMESTAMP 返回不带 Z 的 UTC 字符串，需要手动修补成合法 ISO 格式供 JS 解析
-    const parseSqliteTime = (ts: string) => {
-      if (!ts) return 0;
-      // 处理已经带 T 的标准 ISO 格式
-      if (ts.includes('T')) return new Date(ts).getTime();
-      // 针对 SQLite 默认的 YYYY-MM-DD HH:MM:SS (UTC) 拼接 Z
-      const iso = ts.replace(' ', 'T') + 'Z';
-      const date = new Date(iso);
-      return isNaN(date.getTime()) ? 0 : date.getTime();
-    };
+    const parseSqliteTime = (ts: string) => parseServerDate(ts).getTime();
 
     const sortedLogs = [...recentLogs].sort((a, b) => parseSqliteTime(a.timestamp) - parseSqliteTime(b.timestamp));
     const minLogTime = parseSqliteTime(sortedLogs[0].timestamp);
