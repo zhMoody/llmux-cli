@@ -3,20 +3,23 @@ import { create } from 'zustand';
 interface SettingsState {
   config: Record<string, any>;
   isLoading: boolean;
+  isInitialized: boolean;
   fetchSettings: () => Promise<void>;
   updateSettings: (newConfig: Record<string, any>) => Promise<void>;
 }
 
-export const useSettingsStore = create<SettingsState>((set) => ({
+export const useSettingsStore = create<SettingsState>((set, get) => ({
   config: {},
   isLoading: false,
+  isInitialized: false,
 
   fetchSettings: async () => {
+    if (get().isLoading) return;
     set({ isLoading: true });
     try {
       const res = await fetch('/api/settings');
       const data = await res.json();
-      set({ config: data });
+      set({ config: data, isInitialized: true });
     } catch (err) {
       console.error('Failed to fetch settings:', err);
     } finally {

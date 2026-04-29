@@ -53,10 +53,10 @@ export const UsageDistribution = ({ data, colors, t }: UsageDistributionProps) =
         display: false,
       },
       tooltip: {
-        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-        titleColor: '#64748b',
-        bodyColor: '#1e293b',
-        borderColor: 'rgba(0, 0, 0, 0.05)',
+        backgroundColor: '#09090b',
+        titleColor: '#94a3b8',
+        bodyColor: '#f8fafc',
+        borderColor: 'rgba(255, 255, 255, 0.1)',
         borderWidth: 1,
         padding: 12,
         cornerRadius: 12,
@@ -77,7 +77,7 @@ export const UsageDistribution = ({ data, colors, t }: UsageDistributionProps) =
       y: {
         beginAtZero: true,
         grid: {
-          color: 'rgba(0, 0, 0, 0.04)',
+          color: 'rgba(128, 128, 128, 0.1)',
         },
         ticks: {
           font: { size: 10, weight: 700 },

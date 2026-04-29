@@ -97,10 +97,10 @@ export const UsageTrendChart = ({ data, modelNames, colors, t }: UsageTrendChart
         display: false,
       },
       tooltip: {
-        backgroundColor: 'rgba(255, 255, 255, 0.98)',
-        titleColor: '#1e293b',
-        bodyColor: '#475569',
-        borderColor: 'rgba(0, 0, 0, 0.1)', // 增强边框可见度
+        backgroundColor: '#09090b',
+        titleColor: '#94a3b8',
+        bodyColor: '#f8fafc',
+        borderColor: 'rgba(255, 255, 255, 0.1)', // 增强边框可见度
         borderWidth: 1,
         padding: 12,
         boxPadding: 8,
@@ -138,7 +138,7 @@ export const UsageTrendChart = ({ data, modelNames, colors, t }: UsageTrendChart
         beginAtZero: true,
         border: { display: false },
         grid: {
-          color: 'rgba(0, 0, 0, 0.04)',
+          color: 'rgba(128, 128, 128, 0.1)',
         },
         ticks: {
           font: { size: 10, weight: 600 },

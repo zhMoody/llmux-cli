@@ -103,7 +103,7 @@ export const RecentActivityList = ({ recentLogs, t, onViewReports }: RecentActiv
       legend: { display: false },
       tooltip: {
         enabled: true,
-        backgroundColor: '#1e293b',
+        backgroundColor: '#09090b',
         titleFont: { size: 10 },
         bodyFont: { size: 10 },
         displayColors: false,
@@ -155,8 +155,8 @@ export const RecentActivityList = ({ recentLogs, t, onViewReports }: RecentActiv
 
       {/* 核心指标 - 完美复制顶部 StatCard 风格 */}
       <div className="grid grid-cols-1 gap-4 mb-8">
-        <div className="flex items-center gap-4 bg-white border border-border/60 p-4 rounded-2xl shadow-sm">
-           <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-[#3b82f6]">
+        <div className="flex items-center gap-4 bg-background border border-border/60 p-4 rounded-2xl shadow-sm">
+           <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-[#3b82f6]">
               <Zap size={20} />
            </div>
            <div>
@@ -164,8 +164,8 @@ export const RecentActivityList = ({ recentLogs, t, onViewReports }: RecentActiv
               <div className="text-xl font-bold text-foreground">{stats.successRate}%</div>
            </div>
         </div>
-        <div className="flex items-center gap-4 bg-white border border-border/60 p-4 rounded-2xl shadow-sm">
-           <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600">
+        <div className="flex items-center gap-4 bg-background border border-border/60 p-4 rounded-2xl shadow-sm">
+           <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-500">
               <Clock size={20} />
            </div>
            <div>

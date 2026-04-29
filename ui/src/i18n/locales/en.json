@@ -139,7 +139,7 @@
   "about": {
     "established": "Established 2024",
     "title": "Unified AI Gateway Engine",
-    "desc": "LLMux is a professional-grade multi-account gateway designed for low-latency local access to all your favorite LLMs.",
+    "desc": "LLMux is a professional-grade multi-account gateway designed for local access to all your favorite LLMs.",
     "features": {
       "speed": "Blazing Fast Pulse",
       "speedDesc": "Zero overhead local proxying. Your models, your speed, no middleman latency.",

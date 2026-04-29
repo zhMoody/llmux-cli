@@ -61,6 +61,27 @@ export default function Settings() {
     if (config) setLocalConfig(config);
   }, [config]);
 
+  // 实时预览主题切换
+  useEffect(() => {
+    if (localConfig.theme) {
+      if (localConfig.theme === 'light') {
+        document.documentElement.classList.remove('dark');
+      } else {
+        document.documentElement.classList.add('dark');
+      }
+    }
+    
+    // 卸载时或配置变更时，确保应用的是已保存的主题（除非正在保存）
+    return () => {
+      const savedTheme = config.theme || 'dark';
+      if (savedTheme === 'light') {
+        document.documentElement.classList.remove('dark');
+      } else {
+        document.documentElement.classList.add('dark');
+      }
+    };
+  }, [localConfig.theme, config.theme]);
+
   const handleSave = async () => {
     await updateSettings(localConfig);
     setShowSaved(true);

@@ -21,6 +21,7 @@ import Usage from './routes/usage';
 import SettingsPage from './routes/settings';
 import About from './routes/about';
 import KeysPage from './routes/keys';
+import { useSettingsStore } from './stores/settings';
 
 function cn(...classes: (string | undefined | null | false)[]) {
   return classes.filter(Boolean).join(' ');
@@ -75,6 +76,22 @@ function App() {
   const { t } = useTranslation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const location = useLocation();
+
+  const { config, fetchSettings, isInitialized } = useSettingsStore();
+
+  useEffect(() => {
+    fetchSettings();
+  }, []);
+
+  useEffect(() => {
+    // 默认开启深色模式，除非显式设置为 light
+    const theme = config.theme || 'dark';
+    if (theme === 'light') {
+      document.documentElement.classList.remove('dark');
+    } else {
+      document.documentElement.classList.add('dark');
+    }
+  }, [config.theme]);
 
   // 路由跳转时自动关闭侧边栏 (移动端)
   useEffect(() => {
