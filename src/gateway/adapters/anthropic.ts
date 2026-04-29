@@ -22,7 +22,7 @@ export class AnthropicAdapter implements Adapter {
       stream: request.stream,
       stop_sequences: typeof request.stop === "string" ? [request.stop] : request.stop,
     };
-
+ 
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       "x-api-key": account.api_key,
@@ -69,16 +69,43 @@ export class AnthropicAdapter implements Adapter {
    */
   private transformMessages(messages: ChatMessage[]) {
     let system = "";
-    const filteredMessages: any[] = [];
+    const filteredMessages: { role: "user" | "assistant"; content: string | any[] }[] = [];
 
     for (const msg of messages) {
       if (msg.role === "system") {
-        system += (system ? "\n" : "") + msg.content;
+        const text = Array.isArray(msg.content)
+          ? msg.content.map(p => p.type === "text" ? p.text : "").join("")
+          : msg.content;
+        system += (system ? "\n" : "") + text;
       } else {
         // Claude 角色仅支持 user 和 assistant
+        // 转换 content 格式，处理 OpenAI -> Anthropic 的差异
+        let content: string | any[] = msg.content;
+        if (Array.isArray(msg.content)) {
+          content = msg.content.map(part => {
+            if (part.type === "text") return { type: "text", text: part.text };
+            if (part.type === "image_url") {
+              const url = part.image_url?.url;
+              if (url?.startsWith("data:")) {
+                const [header, data] = url.split(",");
+                const mimeType = header.match(/:(.*?);/)?.[1] || "image/jpeg";
+                return {
+                  type: "image",
+                  source: {
+                    type: "base64",
+                    media_type: mimeType,
+                    data: data
+                  }
+                };
+              }
+            }
+            return part;
+          });
+        }
+
         filteredMessages.push({
           role: msg.role === "assistant" ? "assistant" : "user",
-          content: msg.content,
+          content,
         });
       }
     }

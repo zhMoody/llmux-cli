@@ -83,13 +83,21 @@ export class AnthropicIngressService {
           content: msg.content,
         });
       } else if (Array.isArray(msg.content)) {
-        // 处理 Anthropic 的内容块数组 (包含 text, tool_use, tool_result)
-        const textParts: string[] = [];
+        // 处理 Anthropic 的内容块数组 (包含 text, image, tool_use, tool_result)
+        const openAIParts: any[] = [];
         const toolCalls: any[] = [];
 
         for (const block of msg.content) {
           if (block.type === "text") {
-            textParts.push(block.text);
+            openAIParts.push({ type: "text", text: block.text });
+          } else if (block.type === "image") {
+            // Anthropic image -> OpenAI image_url
+            openAIParts.push({
+              type: "image_url",
+              image_url: {
+                url: `data:${block.source?.media_type || "image/jpeg"};base64,${block.source?.data}`
+              }
+            });
           } else if (block.type === "tool_use") {
             toolCalls.push({
               id: block.id,
@@ -109,10 +117,19 @@ export class AnthropicIngressService {
           }
         }
 
-        if (textParts.length > 0 || toolCalls.length > 0) {
+        if (openAIParts.length > 0 || toolCalls.length > 0) {
+          // 如果只有一个文本块，则打平为字符串以获得最佳兼容性
+          // 如果有多个块或包含图片，则保留数组格式
+          let finalContent: any = null;
+          if (openAIParts.length === 1 && openAIParts[0].type === "text") {
+            finalContent = openAIParts[0].text;
+          } else if (openAIParts.length > 0) {
+            finalContent = openAIParts;
+          }
+
           result.push({
             role: msg.role,
-            content: textParts.join("\n") || null,
+            content: finalContent,
             tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
           } as any);
         }

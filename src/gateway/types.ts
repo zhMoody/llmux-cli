@@ -4,13 +4,21 @@
 export type ChatRole = "system" | "user" | "assistant" | "tool";
 
 /**
- * 消息内容结构
+ * 消息内容块
+ */
+export type ContentPart = 
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string } };
+
+/**
+ * 消息结构
  */
 export interface ChatMessage {
   role: ChatRole;
-  content: string;
+  content: string | ContentPart[];
   name?: string;
   tool_call_id?: string;
+  tool_calls?: any[]; // 暂时保留 tool_calls 的 any，直到完成工具链重构
 }
 
 /**
