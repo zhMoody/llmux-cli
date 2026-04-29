@@ -124,7 +124,17 @@ export default function Models() {
   };
 
   const executeTestAll = async () => {
-    const modelsToTest = filteredModels.map(m => ({ model: m.id, providerId: m.owned_by }));
+    // 仅测试已配置别名的模型，避免测试成百上千个未使用的原始模型
+    const modelsToTest = aliases.map(a => ({ 
+      model: a.target_model, 
+      providerId: a.provider_id || '' 
+    })).filter(m => m.model);
+
+    if (modelsToTest.length === 0) {
+      setTestAllConfirm(false);
+      return;
+    }
+
     await startTestQueue(modelsToTest);
 
     // 立即刷新状态
@@ -191,26 +201,42 @@ export default function Models() {
               {t('models.aliasSection')}
            </h2>
            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-              {aliases.map(a => (
-                <div key={a.id} className="p-2.5 bg-card border border-border rounded-xl flex items-center justify-between group hover:border-primary/30 transition-all">
-                   <div className="flex items-center gap-2 min-w-0">
-                      <div className="flex items-center gap-1 group/alias">
-                         <span className="px-1.5 py-0.5 bg-primary/10 text-primary rounded text-[9px] font-black uppercase truncate">
-                           {a.alias}
-                         </span>
-                         <CopyButton value={a.alias} size={10} className="p-1 opacity-0 group-hover/alias:opacity-100 transition-opacity" />
-                      </div>
-                      <ArrowRight size={10} className="text-muted-foreground opacity-30 shrink-0" />
-                      <div className="text-[11px] font-bold truncate text-muted-foreground">{a.target_model}</div>
-                   </div>
-                   <button 
-                     onClick={() => setAliasToDelete({ id: a.id, name: a.alias })}
-                     className="p-1 text-muted-foreground hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
-                   >
-                     <Trash2 size={12} />
-                   </button>
-                </div>
-              ))}
+              {aliases.map(a => {
+                const result = testResults[a.target_model];
+                return (
+                  <div key={a.id} className="p-2.5 bg-card border border-border rounded-xl flex items-center justify-between group hover:border-primary/30 transition-all">
+                    <div className="flex items-center gap-2 min-w-0">
+                        <div className="flex items-center gap-1 group/alias">
+                           <span className="px-1.5 py-0.5 bg-primary/10 text-primary rounded text-[9px] font-black uppercase truncate">
+                             {a.alias}
+                           </span>
+                           <CopyButton value={a.alias} size={10} className="p-1 opacity-0 group-hover/alias:opacity-100 transition-opacity" />
+                        </div>
+                        <ArrowRight size={10} className="text-muted-foreground opacity-30 shrink-0" />
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="text-[11px] font-bold truncate text-muted-foreground">{a.target_model}</div>
+                          {result && (
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <div className={cn(
+                                "w-1.5 h-1.5 rounded-full",
+                                result.success ? "bg-green-500" : "bg-red-500"
+                              )} />
+                              {result.latency && (
+                                <span className="text-[9px] font-bold text-muted-foreground/50">{result.latency}ms</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                    </div>
+                    <button 
+                      onClick={() => setAliasToDelete({ id: a.id, name: a.alias })}
+                      className="p-1 text-muted-foreground hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                );
+              })}
            </div>
         </div>
       )}
@@ -393,7 +419,7 @@ export default function Models() {
         onClose={() => setTestAllConfirm(false)}
         onConfirm={executeTestAll}
         title={t('models.testAllTitle')}
-        description={t('models.testAllConfirm', '即将把当前筛选出的这批模型发送至后台队列顺序拨测。\n\n⚠️注意：测试将真实调用模型接口发出一句简单的问候，每次将消耗约 1 Token 左右的资源。\n如果在执行期间离开此页面，后台测试依然会继续直至完成。是否继续？')}
+        description={t('models.testAllConfirm', '即将对你已配置别名的模型进行后台顺序拨测。\n\n⚠️注意：测试将真实调用模型接口发出一句简单的问候，每次将消耗约 1 Token 左右的资源。\n如果在执行期间离开此页面，后台测试依然会继续直至完成。是否继续？')}
         confirmText={t('models.testAllStart')}
         variant="warning"
       />
