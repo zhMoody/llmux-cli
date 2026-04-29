@@ -1,4 +1,4 @@
-import { db } from '../db';
+import { db } from '../db/index.js';
 
 const LITELLM_PRICE_URL = 'https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json';
 

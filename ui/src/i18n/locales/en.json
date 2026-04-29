@@ -97,7 +97,11 @@
     "provisioned": "Provisioned Resource",
     "optimizationValue": "System Optimization Value",
     "activeVendors": "{{count}} ACTIVE VENDORS",
-    "processed": "PROCESSED"
+    "activeAccounts": "{{count}} ACTIVE CHANNELS",
+    "processed": "PROCESSED",
+    "avgLatencyLabel": "Avg Latency (ms)",
+    "usageIo": "USAGE (I/O)",
+    "captureTraffic": "Capture traffic to see insights"
   },
   "settings": {
     "title": "System Settings",

@@ -110,6 +110,8 @@ export class UsageService {
     const { sql, params } = this.buildTimeQuery(
       `SELECT 
         provider_id as id,
+        SUM(input_tokens) as input,
+        SUM(output_tokens) as output,
         SUM(input_tokens + output_tokens) as totalTokens,
         COUNT(*) as requests,
         SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END) as successCount,
@@ -150,6 +152,8 @@ export class UsageService {
         a.id as id,
         a.alias as name,
         a.provider_id as provider,
+        SUM(l.input_tokens) as input,
+        SUM(l.output_tokens) as output,
         SUM(l.input_tokens + l.output_tokens) as totalTokens,
         COUNT(*) as requests,
         SUM(CASE WHEN l.success = 1 THEN 1 ELSE 0 END) as successCount,
