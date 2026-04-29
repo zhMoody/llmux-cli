@@ -10,7 +10,7 @@ export function getUsageSummary(req?: Request) {
     const end = url?.searchParams.get("end") || undefined;
 
     const summary = usageService.getSummary(start, end);
-    const recent = usageService.getRecentLogs(100, start, end); 
+    const recent = usageService.getRecentLogs(1000, start, end); 
     return Response.json({
       summary: summary || { totalInput: 0, totalOutput: 0, avgLatency: 0, totalRequests: 0, successRequests: 0 },
       recent

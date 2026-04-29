@@ -12,8 +12,8 @@ export class GeminiAdapter implements Adapter {
     // 确保模型名以 models/ 开头
     const modelId = request.model.startsWith("models/") ? request.model : `models/${request.model}`;
     
-    // 尝试使用 v1 接口（更稳定）
-    const url = `https://generativelanguage.googleapis.com/v1/${modelId}:${method}?key=${account.api_key}`;
+    // 使用 v1beta 接口以支持 systemInstruction 等高级功能
+    const url = `https://generativelanguage.googleapis.com/v1beta/${modelId}:${method}?key=${account.api_key}`;
 
     const { systemInstruction, contents } = this.transformMessages(request.messages);
 

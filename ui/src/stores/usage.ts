@@ -70,7 +70,11 @@ export const useUsageStore = create<UsageState>((set) => ({
     set({ isLoading: true });
     try {
       const url = new URL('/api/usage/summary', window.location.origin);
-      if (start) url.searchParams.set('start', start);
+      // 增加 5 分钟容错余量，防止因为时钟漂移导致边缘数据丢失
+      if (start) {
+        const bufferedStart = new Date(new Date(start.replace(' ', 'T') + 'Z').getTime() - 300000);
+        url.searchParams.set('start', bufferedStart.toISOString().replace('T', ' ').split('.')[0]);
+      }
       if (end) url.searchParams.set('end', end);
       
       const res = await fetch(url.toString());
@@ -87,10 +91,13 @@ export const useUsageStore = create<UsageState>((set) => ({
   },
 
   fetchDetails: async (start, end) => {
-    set({ isLoading: true });
+    // 详情请求也使用 5 分钟容错
     try {
       const url = new URL('/api/usage/details', window.location.origin);
-      if (start) url.searchParams.set('start', start);
+      if (start) {
+        const bufferedStart = new Date(new Date(start.replace(' ', 'T') + 'Z').getTime() - 300000);
+        url.searchParams.set('start', bufferedStart.toISOString().replace('T', ' ').split('.')[0]);
+      }
       if (end) url.searchParams.set('end', end);
 
       const res = await fetch(url.toString());
@@ -98,8 +105,6 @@ export const useUsageStore = create<UsageState>((set) => ({
       set({ breakdown: data });
     } catch (error) {
       console.error('Failed to fetch usage details:', error);
-    } finally {
-      set({ isLoading: false });
     }
   },
 

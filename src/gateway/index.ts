@@ -1,5 +1,8 @@
 import { env } from "../env.js";
+import { anthropicIngress } from "../services/anthropic_ingress.js";
 import { dispatcher } from "../services/dispatcher.js";
+import { PricingService } from "../services/pricing.js";
+import { settingsService } from "../services/settings.js";
 import { ASSETS } from "./assets.js";
 import { createAccount, deleteAccount, listAccounts, updateAccount } from "./routes/accounts.js";
 import { handleWebSession } from "./routes/auth.js";
@@ -9,9 +12,6 @@ import { checkAuth, createApiKey, deleteApiKey, listApiKeys, updateApiKey } from
 import { deleteModelAlias, getAvailableModels, getModelAliases, setModelAlias } from "./routes/models.js";
 import { getSettings, purgeDatabase, updateSettings } from "./routes/settings.js";
 import { getUsageDetails, getUsageSummary } from "./routes/usage.js";
-import { anthropicIngress } from "../services/anthropic_ingress.js";
-import { PricingService } from "../services/pricing.js";
-import { settingsService } from "../services/settings.js";
  
 /**
  * 启动 HTTP Gateway
@@ -25,7 +25,7 @@ export function startGateway() {
 
   const server = Bun.serve({
     port: effectivePort,
-    idleTimeout: 60, // 增加超时时间，防止同步大量模型时请求中断
+    idleTimeout: 255, // 设为 Bun 允许的最大值 (255s)，适配 Claude Code 等长耗时任务
     async fetch(req) {
       const url = new URL(req.url);
 
