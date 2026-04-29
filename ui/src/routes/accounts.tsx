@@ -34,10 +34,11 @@ export default function Accounts() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'api' | 'web'>('api');
   const [formData, setFormData] = useState({ alias: '', provider_id: 'custom', api_key: '', base_url: '' });
   const [editData, setEditData] = useState({ alias: '', provider_id: '', api_key: '', base_url: '', notes: '' });
   const [accountToDelete, setAccountToDelete] = useState<{id: number, name: string} | null>(null);
+  const [isValidating, setIsValidating] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchAccounts();
@@ -45,27 +46,19 @@ export default function Accounts() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsValidating(true);
+    setValidationError(null);
     try {
       await addAccount(formData);
       setIsModalOpen(false);
       setFormData({ alias: '', provider_id: 'custom', api_key: '', base_url: '' });
-      // 新增账户后，自动触发一次全局背景测试
-      triggerAutoTest();
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      setValidationError(err.message || "Validation failed");
+    } finally {
+      setIsValidating(false);
     }
   };
 
-  const triggerAutoTest = async () => {
-    // 1. 先拉取最新的模型列表（因为新增了账户，模型可能变动）
-    await fetchModels();
-    // 2. 获取当前最新的模型状态
-    const latestModels = useModelsStore.getState().availableModels;
-    if (latestModels.length > 0) {
-      const modelsToTest = latestModels.map(m => ({ model: m.id, providerId: m.owned_by }));
-      await startTestQueue(modelsToTest);
-    }
-  };
 
   const openEdit = (acc: any) => {
     setEditingAccount(acc);
@@ -76,14 +69,16 @@ export default function Accounts() {
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingAccount) return;
+    setIsValidating(true);
+    setValidationError(null);
     try {
       await updateAccount(editingAccount.id, editData);
       setIsEditOpen(false);
       setEditingAccount(null);
-      // 修改账户后也触发一次（比如修改了 Key 或 BaseURL）
-      triggerAutoTest();
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      setValidationError(err.message || "Update validation failed");
+    } finally {
+      setIsValidating(false);
     }
   };
 
@@ -208,188 +203,202 @@ export default function Accounts() {
         )}
       </div>
 
-      <Dialog isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={t('accounts.registerTitle')}>
+      <Dialog 
+        isOpen={isModalOpen} 
+        onClose={() => !isValidating && setIsModalOpen(false)} 
+        title={t('accounts.registerTitle')}
+      >
         <div className="space-y-6">
-          {/* Tabs */}
-          <div className="flex bg-muted rounded-xl p-1">
-             <button
-               onClick={() => setActiveTab('api')}
-               className={cn("flex-1 py-2 text-xs font-bold rounded-lg transition-all", activeTab === 'api' ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
-             >
-                API Key
-             </button>
-             <button
-               onClick={() => setActiveTab('web')}
-               className={cn("flex-1 py-2 text-xs font-bold rounded-lg transition-all", activeTab === 'web' ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
-             >
-                {t('auth.webLogin')}
-             </button>
-          </div>
+          {validationError && (
+            <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-start gap-2 text-red-600 text-xs animate-in slide-in-from-top-2">
+              <AlertCircle size={14} className="shrink-0 mt-0.5" />
+              <p className="font-medium">{t(validationError)}</p>
+            </div>
+          )}
 
-          {activeTab === 'api' ? (
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-muted-foreground uppercase">{t('accounts.alias')}</label>
-                <input
-                  type="text" required value={formData.alias}
-                  onChange={e => setFormData({...formData, alias: e.target.value})}
-                  placeholder={t('accounts.aliasPlaceholder')}
-                  className="w-full px-4 py-2 bg-muted/50 border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-muted-foreground uppercase">{t('accounts.provider')}</label>
-                <select
-                  value={formData.provider_id}
-                  onChange={e => {
-                    const pid = e.target.value;
-                    let burl = '';
-                    if (pid === 'qwen') burl = 'https://dashscope.aliyuncs.com/compatible-mode/v1';
-                    else if (pid === 'openai') burl = '';
-                    else if (pid === 'anthropic') burl = '';
-                    else if (pid === 'gemini') burl = '';
-                    setFormData({...formData, provider_id: pid, base_url: burl});
-                  }}
-                  className="w-full px-4 py-2 bg-muted/50 border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all font-semibold"
-                >
-                  <option value="custom">{t('accounts.custom')}</option>
-                  <option value="openai">OpenAI</option>
-                  <option value="anthropic">Anthropic</option>
-                  <option value="gemini">Google Gemini</option>
-                  <option value="qwen">Aliyun Qwen (DashScope)</option>
-                </select>
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-muted-foreground uppercase">{t('accounts.apiKey')}</label>
-                <input
-                  type="password" required value={formData.api_key}
-                  onChange={e => setFormData({...formData, api_key: e.target.value})}
-                  placeholder="sk-..."
-                  className="w-full px-4 py-2 bg-muted/50 border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all font-mono"
-                />
-              </div>
-              {/* Base URL 始终显示，支持所有厂商的中转/代理 */}
-              <div className="space-y-1.5">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-muted-foreground uppercase">{t('accounts.alias')}</label>
+              <input
+                type="text" required value={formData.alias}
+                disabled={isValidating}
+                onChange={e => setFormData({...formData, alias: e.target.value})}
+                placeholder={t('accounts.aliasPlaceholder')}
+                className="w-full px-4 py-2 bg-muted/50 border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all disabled:opacity-50"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-muted-foreground uppercase">{t('accounts.provider')}</label>
+              <select
+                value={formData.provider_id}
+                disabled={isValidating}
+                onChange={e => {
+                  const pid = e.target.value;
+                  let burl = '';
+                  if (pid === 'openai') burl = '';
+                  else if (pid === 'anthropic') burl = '';
+                  else if (pid === 'gemini') burl = '';
+                  setFormData({...formData, provider_id: pid, base_url: burl});
+                }}
+                className="w-full px-4 py-2 bg-muted/50 border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all font-semibold disabled:opacity-50"
+              >
+                <option value="custom">{t('accounts.custom')}</option>
+                <option value="openai">OpenAI</option>
+                <option value="anthropic">Anthropic</option>
+                <option value="gemini">Google Gemini</option>
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-muted-foreground uppercase">{t('accounts.apiKey')}</label>
+              <input
+                type="password" required value={formData.api_key}
+                disabled={isValidating}
+                onChange={e => setFormData({...formData, api_key: e.target.value})}
+                placeholder="sk-..."
+                className="w-full px-4 py-2 bg-muted/50 border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all font-mono disabled:opacity-50"
+              />
+            </div>
+            {formData.provider_id === 'custom' && (
+              <div className="space-y-1.5 animate-in slide-in-from-top-1">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-bold text-muted-foreground uppercase">{t('accounts.baseUrl')}</label>
                   <span className="text-[10px] text-muted-foreground opacity-50 font-medium italic">{t('accounts.optional')}</span>
                 </div>
                 <input
                   type="text" value={formData.base_url}
+                  disabled={isValidating}
                   onChange={e => setFormData({...formData, base_url: e.target.value})}
                   placeholder="https://api.openai.com/v1"
-                  className="w-full px-4 py-2 bg-muted/50 border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all font-mono"
+                  className="w-full px-4 py-2 bg-muted/50 border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all font-mono disabled:opacity-50"
                 />
               </div>
-              <div className="pt-4 flex gap-3">
-                 <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 px-4 py-2 text-sm font-bold border border-border rounded-lg hover:bg-muted transition-all">{t('common.cancel')}</button>
-                 <button type="submit" className="flex-1 px-4 py-2 text-sm font-bold bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-all flex items-center justify-center gap-2">
-                   <Save size={16} /> {t('common.save')}
-                 </button>
-              </div>
-            </form>
-          ) : (
-            <div className="space-y-6">
-               <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground uppercase">{t('accounts.provider')}</div>
-                  <select
-                    value={formData.provider_id}
-                    onChange={e => setFormData({...formData, provider_id: e.target.value})}
-                    className="w-full px-4 py-2 bg-muted/50 border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all font-semibold"
-                  >
-                    <option value="poe">Poe</option>
-                    <option value="claude">Claude Web</option>
-                  </select>
-               </div>
-
-               <div className="p-4 bg-muted/50 rounded-xl border border-border space-y-4">
-                  <div className="flex items-start gap-3">
-                     <div className="w-5 h-5 rounded-full bg-primary/20 text-primary flex items-center justify-center text-[10px] font-bold mt-0.5">1</div>  
-                     <p className="text-xs font-medium leading-relaxed">{t('auth.step1')}</p>
-                  </div>
-                  <div className="flex items-start gap-3">
-                     <div className="w-5 h-5 rounded-full bg-primary/20 text-primary flex items-center justify-center text-[10px] font-bold mt-0.5">2</div>  
-                     <p className="text-xs font-medium leading-relaxed">{t('auth.step3')}</p>
-                  </div>
-
-                  <div className="pt-2">
-                     <div className="flex items-center justify-between p-3 bg-card border border-border rounded-lg">
-                        <span className="text-[10px] font-bold text-muted-foreground truncate flex-1 mr-2">{t('auth.copyScript')}</span>
-                        <CopyButton 
-                          value={getSyncScript()} 
-                          size={16} 
-                          title={t('accounts.copyScript')}
-                          className="bg-primary/10 text-primary hover:bg-primary/20"
-                        />
-                     </div>
-                  </div>
-               </div>
-
-               <div className="flex items-center gap-2 p-3 bg-amber-500/10 text-amber-600 rounded-lg text-[10px] font-bold">
-                  <Monitor size={14} />
-                  {t('auth.step3Hint')}
-               </div>
+            )}
+            <div className="pt-4 flex gap-3">
+               <button 
+                 type="button" 
+                 disabled={isValidating}
+                 onClick={() => setIsModalOpen(false)} 
+                 className="flex-1 px-4 py-2 text-sm font-bold border border-border rounded-lg hover:bg-muted transition-all disabled:opacity-50"
+               >
+                 {t('common.cancel')}
+               </button>
+               <button 
+                 type="submit" 
+                 disabled={isValidating}
+                 className="flex-1 px-4 py-2 text-sm font-bold bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-all flex items-center justify-center gap-2 disabled:opacity-80"
+               >
+                 {isValidating ? (
+                   <>
+                     <Loader2 size={16} className="animate-spin" />
+                     {t('accounts.validating', '验证中...')}
+                   </>
+                 ) : (
+                   <>
+                     <Save size={16} />
+                     {t('common.save')}
+                   </>
+                 )}
+               </button>
             </div>
-          )}
+          </form>
         </div>
       </Dialog>
 
       {/* 编辑账户 Modal */}
-      <Dialog isOpen={isEditOpen} onClose={() => { setIsEditOpen(false); setEditingAccount(null); }} title={t('accounts.editAccount')}>
-        <form onSubmit={handleEditSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-muted-foreground uppercase">{t('accounts.alias')}</label>
-            <input
-              type="text" required value={editData.alias}
-              onChange={e => setEditData({...editData, alias: e.target.value})}
-              className="w-full px-4 py-2 bg-muted/50 border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-muted-foreground uppercase">{t('accounts.provider')}</label>
-            <select
-              value={editData.provider_id}
-              onChange={e => setEditData({...editData, provider_id: e.target.value})}
-              className="w-full px-4 py-2 bg-muted/50 border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all font-semibold"
-            >
-              <option value="custom">{t('accounts.custom')}</option>
-              <option value="openai">OpenAI</option>
-              <option value="anthropic">Anthropic</option>
-              <option value="gemini">Google Gemini</option>
-              <option value="qwen">Aliyun Qwen (DashScope)</option>
-            </select>
-          </div>
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-muted-foreground uppercase">API Key</label>
-              <span className="text-[10px] text-muted-foreground italic">{t('accounts.leaveBlank')}</span>
+      <Dialog 
+        isOpen={isEditOpen} 
+        onClose={() => !isValidating && setIsEditOpen(false)} 
+        title={t('accounts.editAccount')}
+      >
+        <div className="space-y-6">
+          {validationError && (
+            <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-start gap-2 text-red-600 text-xs animate-in slide-in-from-top-2">
+              <AlertCircle size={14} className="shrink-0 mt-0.5" />
+              <p className="font-medium">{t(validationError)}</p>
             </div>
-            <input
-              type="password" value={editData.api_key}
-              onChange={e => setEditData({...editData, api_key: e.target.value})}
-              placeholder={t('accounts.leaveBlank')}
-              className="w-full px-4 py-2 bg-muted/50 border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all font-mono"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-muted-foreground uppercase">Base URL</label>
-              <span className="text-[10px] text-muted-foreground opacity-50 italic">{t('accounts.optional')}</span>
+          )}
+
+          <form onSubmit={handleEditSubmit} className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-muted-foreground uppercase">{t('accounts.alias')}</label>
+              <input
+                type="text" required value={editData.alias}
+                disabled={isValidating}
+                onChange={e => setEditData({...editData, alias: e.target.value})}
+                className="w-full px-4 py-2 bg-muted/50 border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all disabled:opacity-50"
+              />
             </div>
-            <input
-              type="text" value={editData.base_url}
-              onChange={e => setEditData({...editData, base_url: e.target.value})}
-              placeholder="https://api.openai.com/v1"
-              className="w-full px-4 py-2 bg-muted/50 border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-            />
-          </div>
-          <div className="pt-4 flex gap-3">
-             <button type="button" onClick={() => { setIsEditOpen(false); setEditingAccount(null); }} className="flex-1 px-4 py-2 text-sm font-bold border border-border rounded-lg hover:bg-muted transition-all">{t('common.cancel')}</button>
-             <button type="submit" className="flex-1 px-4 py-2 text-sm font-bold bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-all flex items-center justify-center gap-2">
-               <Save size={16} /> {t('common.save')}
-             </button>
-          </div>
-        </form>
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-muted-foreground uppercase">{t('accounts.provider')}</label>
+              <select
+                value={editData.provider_id}
+                disabled={isValidating}
+                onChange={e => setEditData({...editData, provider_id: e.target.value})}
+                className="w-full px-4 py-2 bg-muted/50 border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all font-semibold disabled:opacity-50"
+              >
+                <option value="custom">{t('accounts.custom')}</option>
+                <option value="openai">OpenAI</option>
+                <option value="anthropic">Anthropic</option>
+                <option value="gemini">Google Gemini</option>
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-muted-foreground uppercase">API Key</label>
+                <span className="text-[10px] text-muted-foreground italic">{t('accounts.leaveBlank')}</span>
+              </div>
+              <input
+                type="password" value={editData.api_key}
+                disabled={isValidating}
+                onChange={e => setEditData({...editData, api_key: e.target.value})}
+                placeholder={t('accounts.leaveBlank')}
+                className="w-full px-4 py-2 bg-muted/50 border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all font-mono disabled:opacity-50"
+              />
+            </div>
+            {editData.provider_id === 'custom' && (
+              <div className="space-y-1.5 animate-in slide-in-from-top-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-muted-foreground uppercase">Base URL</label>
+                  <span className="text-[10px] text-muted-foreground opacity-50 italic">{t('accounts.optional')}</span>
+                </div>
+                <input
+                  type="text" value={editData.base_url}
+                  disabled={isValidating}
+                  onChange={e => setEditData({...editData, base_url: e.target.value})}
+                  placeholder="https://api.openai.com/v1"
+                  className="w-full px-4 py-2 bg-muted/50 border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all disabled:opacity-50"
+                />
+              </div>
+            )}
+            <div className="pt-4 flex gap-3">
+               <button 
+                 type="button" 
+                 disabled={isValidating}
+                 onClick={() => { setIsEditOpen(false); setEditingAccount(null); }} 
+                 className="flex-1 px-4 py-2 text-sm font-bold border border-border rounded-lg hover:bg-muted transition-all disabled:opacity-50"
+               >
+                 {t('common.cancel')}
+               </button>
+               <button 
+                 type="submit" 
+                 disabled={isValidating}
+                 className="flex-1 px-4 py-2 text-sm font-bold bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-all flex items-center justify-center gap-2 disabled:opacity-80"
+               >
+                 {isValidating ? (
+                   <>
+                     <Loader2 size={16} className="animate-spin" />
+                     {t('accounts.validating', '验证中...')}
+                   </>
+                 ) : (
+                   <>
+                     <Save size={16} />
+                     {t('common.save')}
+                   </>
+                 )}
+               </button>
+            </div>
+          </form>
+        </div>
       </Dialog>
 
       {/* 增强型删除确认弹窗 */}

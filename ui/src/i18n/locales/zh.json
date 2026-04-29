@@ -49,7 +49,7 @@
       "health": "系统健康度",
       "sessions": "活跃会话"
     },
-    "providerStatus": "厂商在线状态",
+    "providerStatus": "账户在线状态",
     "recentLogs": "最近日志动态",
     "connected": "已连接",
     "viewReports": "查看详细报告",
@@ -80,7 +80,7 @@
     "efficiency": "模型效能分析",
     "auditLogs": "审计日志",
     "breakdown": "模型看板",
-    "tokens": "消耗代币",
+    "tokens": "消耗 Token",
     "downloadCsv": "导出数据 (CSV)",
     "input": "输入",
     "output": "输出",
@@ -194,7 +194,10 @@
     "editAccount": "编辑账户",
     "custom": "自定义 (兼容 OpenAI)",
     "copied": "已复制！",
-    "copyScript": "复制脚本"
+    "copyScript": "复制脚本",
+    "validating": "验证中...",
+    "validationFailed": "验证失败：无法从该账户获取任何模型。请检查 API Key 和 Base URL。",
+    "validationError": "验证出错：{{message}}"
   },
   "models": {
     "title": "模型管理",

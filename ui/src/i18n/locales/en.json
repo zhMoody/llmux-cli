@@ -44,7 +44,7 @@
       "health": "System Health",
       "sessions": "Active Sessions"
     },
-    "providerStatus": "Provider Status",
+    "providerStatus": "Account Status",
     "recentLogs": "Recent Logs",
     "connected": "Connected",
     "viewReports": "View Detailed Reports",
@@ -189,7 +189,10 @@
     "editAccount": "Edit Account",
     "custom": "Custom (OpenAI Compatible)",
     "copied": "Copied!",
-    "copyScript": "Copy Script"
+    "copyScript": "Copy Script",
+    "validating": "Validating...",
+    "validationFailed": "Validation failed: Could not fetch any models from this account. Please check your API Key and Base URL.",
+    "validationError": "Validation error: {{message}}"
   },
   "models": {
     "title": "Model Management",

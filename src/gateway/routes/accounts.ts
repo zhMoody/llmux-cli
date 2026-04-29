@@ -1,5 +1,9 @@
 import { db } from "../../db/index.js";
-import { encryptKey } from "../../services/crypto.js";
+import { decryptKey, encryptKey } from "../../services/crypto.js";
+import { openaiAdapter } from "../adapters/openai.js";
+import { anthropicAdapter } from "../adapters/anthropic.js";
+import { geminiAdapter } from "../adapters/gemini.js";
+import { customAdapter } from "../adapters/custom.js";
 
 /**
  * 获取所有账户列表 (脱敏处理)
@@ -24,6 +28,29 @@ export async function createAccount(req: Request) {
 
     const encryptedKey = encryptKey(api_key);
 
+    // --- 强制校验逻辑 ---
+    // 构造临时账户对象进行校验
+    const tempAccount = { id: 0, alias, provider_id, api_key, base_url: base_url || null, is_active: 1, weight: 1 };
+    let models: any[] = [];
+    
+    try {
+      // 根据厂商类型获取模型列表
+      const providerMeta = db.query("SELECT type FROM providers WHERE id = ?").get(provider_id) as { type: string } | undefined;
+      const type = providerMeta?.type || provider_id;
+
+      if (type === "openai") models = await openaiAdapter.listModels(tempAccount);
+      else if (type === "anthropic") models = await anthropicAdapter.listModels(tempAccount);
+      else if (type === "gemini") models = await geminiAdapter.listModels(tempAccount);
+      else if (["custom", "poe", "claude", "qwen"].includes(type)) models = await customAdapter.listModels(tempAccount);
+
+      if (models.length === 0) {
+        return Response.json({ error: "accounts.validationFailed" }, { status: 400 });
+      }
+    } catch (e: any) {
+      return Response.json({ error: e.message }, { status: 400 });
+    }
+    // --- 校验结束 ---
+
     const stmt = db.prepare(`
       INSERT INTO accounts (alias, provider_id, api_key, base_url, weight, notes)
       VALUES (?, ?, ?, ?, ?, ?)
@@ -31,7 +58,11 @@ export async function createAccount(req: Request) {
     
     stmt.run(alias, provider_id, encryptedKey, base_url || null, weight || 1, notes || null);
 
-    return Response.json({ success: true, message: "Account created successfully" });
+    return Response.json({ 
+      success: true, 
+      message: "Account verified and created successfully", 
+      modelCount: models.length 
+    });
   } catch (err: any) {
     return Response.json({ error: err.message }, { status: 500 });
   }
@@ -56,6 +87,38 @@ export async function updateAccount(id: string, req: Request) {
     if (api_key && api_key !== "********") {
       updatedKey = encryptKey(api_key);
     }
+
+    // --- 强制校验逻辑 ---
+    // 如果修改了关键信息，需要重新校验
+    if (api_key !== "********" || base_url !== undefined) {
+      const tempAccount = { 
+        id: parseInt(id), 
+        alias: alias || existing.alias, 
+        provider_id: provider_id || existing.provider_id, 
+        api_key: (api_key && api_key !== "********") ? api_key : decryptKey(existing.api_key), 
+        base_url: base_url !== undefined ? base_url : existing.base_url, 
+        is_active: is_active !== undefined ? is_active : existing.is_active, 
+        weight: weight !== undefined ? weight : existing.weight 
+      };
+      
+      try {
+        const providerMeta = db.query("SELECT type FROM providers WHERE id = ?").get(tempAccount.provider_id) as { type: string } | undefined;
+        const type = providerMeta?.type || tempAccount.provider_id;
+        let models: any[] = [];
+
+        if (type === "openai") models = await openaiAdapter.listModels(tempAccount);
+        else if (type === "anthropic") models = await anthropicAdapter.listModels(tempAccount);
+        else if (type === "gemini") models = await geminiAdapter.listModels(tempAccount);
+        else if (["custom", "poe", "claude", "qwen"].includes(type)) models = await customAdapter.listModels(tempAccount);
+
+        if (models.length === 0) {
+          return Response.json({ error: "accounts.validationFailed" }, { status: 400 });
+        }
+      } catch (e: any) {
+        return Response.json({ error: e.message }, { status: 400 });
+      }
+    }
+    // --- 校验结束 ---
 
     const stmt = db.prepare(`
       UPDATE accounts 
