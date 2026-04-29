@@ -50,6 +50,8 @@ export default function Settings() {
   const { config, isLoading, fetchSettings, updateSettings } = useSettingsStore();
   const [localConfig, setLocalConfig] = useState<Record<string, any>>({});
   const [showSaved, setShowSaved] = useState(false);
+  const [showRestartModal, setShowRestartModal] = useState(false);
+  const [errorModal, setErrorModal] = useState<{title: string, message: string} | null>(null);
   const [isPurging, setIsPurging] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
@@ -61,31 +63,37 @@ export default function Settings() {
     if (config) setLocalConfig(config);
   }, [config]);
 
-  // 实时预览主题切换
-  useEffect(() => {
-    if (localConfig.theme) {
-      if (localConfig.theme === 'light') {
-        document.documentElement.classList.remove('dark');
-      } else {
-        document.documentElement.classList.add('dark');
+  const handleAutoSave = async (updatedConfig: Record<string, any>, isPortChange = false) => {
+    // 端口校验逻辑
+    if (isPortChange) {
+      const port = parseInt(updatedConfig.port);
+      if (isNaN(port) || port < 1024 || port > 65535) {
+        setErrorModal({
+          title: t('settings.invalidPortTitle', '端口范围错误'),
+          message: t('settings.invalidPort', '端口号必须在 1024 - 65535 之间，请重新输入。')
+        });
+        setLocalConfig({...updatedConfig, port: config.port || '25975'});
+        return;
+      }
+      
+      const reserved = [3306, 5432, 6379, 8080, 27017];
+      if (reserved.includes(port)) {
+        setErrorModal({
+          title: t('settings.reservedPortTitle', '端口已被占用'),
+          message: t('settings.reservedPort', '该端口已被常用数据库或 Web 服务占用，为了避免冲突，请选择其他端口。')
+        });
+        return;
       }
     }
-    
-    // 卸载时或配置变更时，确保应用的是已保存的主题（除非正在保存）
-    return () => {
-      const savedTheme = config.theme || 'dark';
-      if (savedTheme === 'light') {
-        document.documentElement.classList.remove('dark');
-      } else {
-        document.documentElement.classList.add('dark');
-      }
-    };
-  }, [localConfig.theme, config.theme]);
 
-  const handleSave = async () => {
-    await updateSettings(localConfig);
+    setLocalConfig(updatedConfig);
+    await updateSettings(updatedConfig);
     setShowSaved(true);
-    setTimeout(() => setShowSaved(false), 3000);
+    setTimeout(() => setShowSaved(false), 2000);
+
+    if (isPortChange) {
+      setShowRestartModal(true);
+    }
   };
 
   const handlePurge = async () => {
@@ -115,31 +123,39 @@ export default function Settings() {
             <p className="text-sm text-muted-foreground">{t('settings.subtitle')}</p>
           </div>
         </div>
-        <div className="flex gap-2">
-           <button 
-             onClick={handleSave}
-             disabled={isLoading}
-             className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-bold shadow-sm flex items-center gap-2 disabled:opacity-50"
-           >
-             {isLoading ? <Loader2 size={14} className="animate-spin" /> : showSaved ? <CheckCircle2 size={14} /> : <Save size={14} />}
-             {showSaved ? t('common.saved') : t('settings.saveChanges')}
-           </button>
+        <div className="flex items-center gap-2">
+           {showSaved && (
+             <div className="flex items-center gap-1.5 text-[10px] font-bold text-green-500 bg-green-500/10 px-3 py-1.5 rounded-full animate-in zoom-in duration-300">
+                <CheckCircle2 size={12} />
+                <span>{t('common.saved')}</span>
+             </div>
+           )}
         </div>
       </div>
 
       <div className="space-y-8">
         <SettingGroup title={t('settings.infra')} icon={Terminal}>
            <SettingItem label={t('settings.port')} description={t('settings.portDesc')}>
-             <input 
-              type="text" 
-              value={localConfig.port || '25975'} 
-              onChange={e => setLocalConfig({...localConfig, port: e.target.value})}
-              className="bg-muted/50 border border-border rounded-lg px-3 py-1.5 text-xs font-bold w-24 text-center outline-none focus:ring-1 focus:ring-primary/20"
-             />
+             <div className="relative flex items-center gap-2">
+                <input 
+                  type="text" 
+                  value={localConfig.port || '25975'} 
+                  onChange={e => setLocalConfig({...localConfig, port: e.target.value})}
+                  onKeyDown={e => e.key === 'Enter' && handleAutoSave(localConfig, true)}
+                  className="bg-muted/50 border border-border rounded-lg px-3 py-1.5 text-xs font-bold w-24 text-center outline-none focus:ring-1 focus:ring-primary/20 transition-all"
+                />
+                <button 
+                  onClick={() => handleAutoSave(localConfig, true)}
+                  className="p-1.5 bg-primary/10 text-primary rounded-md hover:bg-primary hover:text-primary-foreground transition-all duration-200"
+                  title={t('common.save')}
+                >
+                  <CheckCircle2 size={14} />
+                </button>
+             </div>
            </SettingItem>
            <SettingItem label={t('settings.autoUpdate')} description={t('settings.autoUpdateDesc')}>
              <div 
-                onClick={() => setLocalConfig({...localConfig, autoUpdate: !localConfig.autoUpdate})}
+                onClick={() => handleAutoSave({...localConfig, autoUpdate: !localConfig.autoUpdate})}
                 className={cn("w-10 h-5 rounded-full relative cursor-pointer transition-colors px-1 flex items-center", localConfig.autoUpdate ? 'bg-primary' : 'bg-muted')}
               >
                 <div className={cn("w-3 h-3 bg-white rounded-full transition-all", localConfig.autoUpdate ? 'translate-x-5' : 'translate-x-0')} />
@@ -151,13 +167,13 @@ export default function Settings() {
            <SettingItem label={t('settings.theme')} description={t('settings.themeDesc')}>
              <div className="flex border border-border rounded-lg overflow-hidden text-[10px] font-bold">
                 <button 
-                  onClick={() => setLocalConfig({...localConfig, theme: 'dark'})}
+                  onClick={() => handleAutoSave({...localConfig, theme: 'dark'})}
                   className={cn("px-4 py-1.5 transition-colors", localConfig.theme !== 'light' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted')}
                 >
                   {t('settings.themeDark')}
                 </button>
                 <button 
-                  onClick={() => setLocalConfig({...localConfig, theme: 'light'})}
+                  onClick={() => handleAutoSave({...localConfig, theme: 'light'})}
                   className={cn("px-4 py-1.5 transition-colors", localConfig.theme === 'light' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted')}
                 >
                   {t('settings.themeLight')}
@@ -196,7 +212,7 @@ export default function Settings() {
              <div>
                 <p className="text-[11px] font-black text-muted-foreground uppercase tracking-widest mb-2 px-1">
                    {t('settings.purgeWillWipe', '这将永久抹除：')}
-                </p>
+                 </p>
                 <div className="grid grid-cols-1 gap-1">
                    {[
                      t('settings.wipeAccounts', '1. 所有服务商账户信息'),
@@ -222,6 +238,36 @@ export default function Settings() {
         size="md"
         requireInput="reset"
         isLoading={isPurging}
+      />
+
+      <ConfirmDialog 
+        isOpen={showRestartModal}
+        onClose={() => setShowRestartModal(false)}
+        onConfirm={() => setShowRestartModal(false)}
+        title={t('settings.restartRequired', '需要重新启动')}
+        description={
+          <p className="text-sm font-medium text-muted-foreground leading-relaxed px-1">
+            {t('settings.restartDesc', '服务端口已修改成功。为了使更改生效，请手动关闭当前运行的 LLMux 进程并重新启动。')}
+          </p>
+        }
+        confirmText={t('common.done', '知道了')}
+        variant="info"
+        size="sm"
+      />
+
+      <ConfirmDialog 
+        isOpen={!!errorModal}
+        onClose={() => setErrorModal(null)}
+        onConfirm={() => setErrorModal(null)}
+        title={errorModal?.title || ''}
+        description={
+          <p className="text-sm font-medium text-muted-foreground leading-relaxed px-1">
+            {errorModal?.message}
+          </p>
+        }
+        confirmText={t('common.done', '知道了')}
+        variant="warning"
+        size="sm"
       />
     </div>
   );

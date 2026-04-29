@@ -7,7 +7,10 @@
     "settings": "系统设置",
     "keys": "密钥管理",
     "about": "关于",
+    "confirm": "确认",
     "cancel": "取消",
+    "confirmText": "确认",
+    "cancelText": "取消",
     "save": "保存",
     "delete": "删除",
     "status": "系统状态",
@@ -137,7 +140,13 @@
     "purgeIrreversible": "此操作不可撤销，系统将回到初始状态。",
     "purgeSuccess": "系统已重置完毕！",
     "reset": "重置",
-    "saveChanges": "保存修改"
+    "saveChanges": "保存修改",
+    "invalidPortTitle": "端口范围错误",
+    "invalidPort": "端口号必须在 1024 - 65535 之间，请重新输入。",
+    "reservedPortTitle": "端口已被占用",
+    "reservedPort": "该端口已被常用数据库或 Web 服务占用，为了避免冲突，请选择其他端口。",
+    "restartRequired": "需要重新启动",
+    "restartDesc": "服务端口已修改成功。为了使更改生效，请手动关闭当前运行的 LLMux 进程并重新启动。"
   },
   "about": {
     "established": "始于 2024",

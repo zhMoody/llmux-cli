@@ -172,8 +172,8 @@ export function ConfirmDialog({
   onConfirm,
   title,
   description,
-  confirmText = 'Confirm',
-  cancelText = 'Cancel',
+  confirmText,
+  cancelText,
   variant = 'warning',
   isLoading = false,
   size = 'sm',
@@ -213,7 +213,7 @@ export function ConfirmDialog({
             disabled={isLoading}
             className="px-4 py-2 text-sm font-bold border border-border rounded-lg hover:bg-muted transition-all disabled:opacity-50"
           >
-            {cancelText}
+            {cancelText || t('common.cancel')}
           </button>
           <button
             onClick={onConfirm}
@@ -223,7 +223,7 @@ export function ConfirmDialog({
             {isLoading && (
               <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
             )}
-            {confirmText}
+            {confirmText || t('common.confirm')}
           </button>
         </>
       }

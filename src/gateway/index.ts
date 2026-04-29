@@ -11,6 +11,7 @@ import { getSettings, purgeDatabase, updateSettings } from "./routes/settings.js
 import { getUsageDetails, getUsageSummary } from "./routes/usage.js";
 import { anthropicIngress } from "../services/anthropic_ingress.js";
 import { PricingService } from "../services/pricing.js";
+import { settingsService } from "../services/settings.js";
  
 /**
  * 启动 HTTP Gateway
@@ -19,8 +20,11 @@ export function startGateway() {
   // 启动模型价格自动同步任务
   PricingService.startAutoSync();
 
+  const settings = settingsService.getAll();
+  const effectivePort = settings.port ? parseInt(settings.port) : env.PORT;
+
   const server = Bun.serve({
-    port: env.PORT,
+    port: effectivePort,
     async fetch(req) {
       const url = new URL(req.url);
 

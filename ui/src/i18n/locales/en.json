@@ -7,6 +7,7 @@
     "usage": "Usage",
     "settings": "Settings",
     "about": "About",
+    "confirm": "Confirm",
     "cancel": "Cancel",
     "save": "Save",
     "delete": "Delete",
@@ -134,7 +135,13 @@
     "purgeIrreversible": "This action cannot be undone, the system will return to its initial state.",
     "purgeSuccess": "System reset complete!",
     "reset": "Reset",
-    "saveChanges": "Save Changes"
+    "saveChanges": "Save Changes",
+    "invalidPortTitle": "Invalid Port Range",
+    "invalidPort": "The port number must be between 1024 and 65535. Please try again.",
+    "reservedPortTitle": "Port Reserved",
+    "reservedPort": "This port is reserved for common database or web services. Please choose another port to avoid conflicts.",
+    "restartRequired": "Restart Required",
+    "restartDesc": "Service port updated successfully. To apply these changes, please manually stop the running LLMux process and restart it."
   },
   "about": {
     "established": "Established 2024",
