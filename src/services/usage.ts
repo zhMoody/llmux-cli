@@ -111,7 +111,9 @@ export class UsageService {
       `SELECT 
         provider_id as id,
         SUM(input_tokens + output_tokens) as totalTokens,
-        COUNT(*) as requests
+        COUNT(*) as requests,
+        SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END) as successCount,
+        AVG(latency_ms) as avgLatency
       FROM usage_logs 
       WHERE is_test = 0`,
       startTime,
@@ -129,7 +131,9 @@ export class UsageService {
         model,
         SUM(input_tokens) as input,
         SUM(output_tokens) as output,
-        COUNT(*) as requests
+        COUNT(*) as requests,
+        SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END) as successCount,
+        AVG(latency_ms) as avgLatency
       FROM usage_logs
       WHERE is_test = 0`,
       startTime,
@@ -143,10 +147,13 @@ export class UsageService {
   getBreakdownByAccount(startTime?: string, endTime?: string) {
     const { sql, params } = this.buildTimeQuery(
       `SELECT 
+        a.id as id,
         a.alias as name,
         a.provider_id as provider,
         SUM(l.input_tokens + l.output_tokens) as totalTokens,
-        COUNT(*) as requests
+        COUNT(*) as requests,
+        SUM(CASE WHEN l.success = 1 THEN 1 ELSE 0 END) as successCount,
+        AVG(l.latency_ms) as avgLatency
       FROM usage_logs l
       JOIN accounts a ON l.account_id = a.id
       WHERE l.is_test = 0`,
@@ -154,6 +161,63 @@ export class UsageService {
       endTime
     );
     return db.query(`${sql} GROUP BY a.id, a.alias`).all(...params);
+  }
+
+  /**
+   * 获取详细审计日志（分页与过滤）
+   */
+  getDetailedLogs(options: { 
+    startTime?: string, 
+    endTime?: string, 
+    model?: string, 
+    provider?: string, 
+    success?: number,
+    limit?: number,
+    offset?: number
+  }) {
+    let baseSql = `
+      SELECT 
+        l.*, 
+        a.alias as account_name
+      FROM usage_logs l
+      LEFT JOIN accounts a ON l.account_id = a.id
+      WHERE 1=1
+    `;
+    const params: any[] = [];
+
+    if (options.startTime) {
+      baseSql += ` AND l.timestamp >= ?`;
+      params.push(options.startTime);
+    }
+    if (options.endTime) {
+      baseSql += ` AND l.timestamp <= ?`;
+      params.push(options.endTime);
+    }
+    if (options.model) {
+      baseSql += ` AND l.model LIKE ?`;
+      params.push(`%${options.model}%`);
+    }
+    if (options.provider) {
+      baseSql += ` AND l.provider_id = ?`;
+      params.push(options.provider);
+    }
+    if (options.success !== undefined) {
+      baseSql += ` AND l.success = ?`;
+      params.push(options.success);
+    }
+
+    baseSql += ` ORDER BY l.timestamp DESC`;
+
+    if (options.limit) {
+      baseSql += ` LIMIT ?`;
+      params.push(options.limit);
+    }
+    if (options.offset) {
+      baseSql += ` OFFSET ?`;
+      params.push(options.offset);
+    }
+
+    return db.query(baseSql).all(...params);
   }
 }
 

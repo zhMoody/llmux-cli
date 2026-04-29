@@ -41,3 +41,26 @@ export function getUsageDetails(req?: Request) {
     return Response.json({ error: err.message }, { status: 500 });
   }
 }
+
+/**
+ * 获取分页审计日志
+ */
+export function getUsageLogs(req: Request) {
+  try {
+    const url = new URL(req.url);
+    const options = {
+      startTime: url.searchParams.get("start") || undefined,
+      endTime: url.searchParams.get("end") || undefined,
+      model: url.searchParams.get("model") || undefined,
+      provider: url.searchParams.get("provider") || undefined,
+      success: url.searchParams.has("success") ? Number(url.searchParams.get("success")) : undefined,
+      limit: Number(url.searchParams.get("limit")) || 50,
+      offset: Number(url.searchParams.get("offset")) || 0
+    };
+
+    const logs = usageService.getDetailedLogs(options);
+    return Response.json(logs);
+  } catch (err: any) {
+    return Response.json({ error: err.message }, { status: 500 });
+  }
+}

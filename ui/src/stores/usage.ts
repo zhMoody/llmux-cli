@@ -22,39 +22,65 @@ export interface UsageLog {
 }
 
 export interface UsageBreakdown {
-  byModel: any[];
-  byProvider: any[];
-  byAccount: any[];
+  byModel: {
+    model: string;
+    input: number;
+    output: number;
+    requests: number;
+    successCount: number;
+    avgLatency: number;
+  }[];
+  byProvider: {
+    id: string;
+    totalTokens: number;
+    requests: number;
+    successCount: number;
+    avgLatency: number;
+  }[];
+  byAccount: {
+    id: number;
+    name: string;
+    provider: string;
+    totalTokens: number;
+    requests: number;
+    successCount: number;
+    avgLatency: number;
+  }[];
 }
 
 export interface UsageState {
   summary: UsageSummary | null;
-  recentLogs: UsageLog[];
   breakdown: UsageBreakdown | null;
+  logs: any[];
+  recentLogs: any[];
   isLoading: boolean;
   fetchSummary: (start?: string, end?: string) => Promise<void>;
   fetchDetails: (start?: string, end?: string) => Promise<void>;
+  fetchLogs: (params: { start?: string, end?: string, model?: string, provider?: string, success?: number, limit?: number, offset?: number }) => Promise<void>;
 }
 
 export const useUsageStore = create<UsageState>((set) => ({
   summary: null,
-  recentLogs: [],
   breakdown: null,
+  logs: [],
+  recentLogs: [],
   isLoading: false,
 
   fetchSummary: async (start, end) => {
     set({ isLoading: true });
     try {
-      const params = new URLSearchParams();
-      if (start) params.append('start', start);
-      if (end) params.append('end', end);
+      const url = new URL('/api/usage/summary', window.location.origin);
+      if (start) url.searchParams.set('start', start);
+      if (end) url.searchParams.set('end', end);
       
-      const query = params.toString() ? `?${params.toString()}` : '';
-      const res = await fetch(`/api/usage/summary${query}`);
+      const res = await fetch(url.toString());
       const data = await res.json();
-      set({ summary: data.summary, recentLogs: data.recent });
-    } catch (err) {
-      console.error('Failed to fetch usage summary:', err);
+      set({ 
+        summary: data.summary,
+        recentLogs: data.recent || []
+      });
+    } catch (error) {
+      console.error('Failed to fetch usage summary:', error);
     } finally {
       set({ isLoading: false });
     }
@@ -63,16 +89,33 @@ export const useUsageStore = create<UsageState>((set) => ({
   fetchDetails: async (start, end) => {
     set({ isLoading: true });
     try {
-      const params = new URLSearchParams();
-      if (start) params.append('start', start);
-      if (end) params.append('end', end);
-      
-      const query = params.toString() ? `?${params.toString()}` : '';
-      const res = await fetch(`/api/usage/details${query}`);
+      const url = new URL('/api/usage/details', window.location.origin);
+      if (start) url.searchParams.set('start', start);
+      if (end) url.searchParams.set('end', end);
+
+      const res = await fetch(url.toString());
       const data = await res.json();
       set({ breakdown: data });
-    } catch (err) {
-      console.error('Failed to fetch usage details:', err);
+    } catch (error) {
+      console.error('Failed to fetch usage details:', error);
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  fetchLogs: async (params) => {
+    set({ isLoading: true });
+    try {
+      const url = new URL('/api/usage/logs', window.location.origin);
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) url.searchParams.set(key, String(value));
+      });
+
+      const res = await fetch(url.toString());
+      const data = await res.json();
+      set({ logs: data });
+    } catch (error) {
+      console.error('Failed to fetch usage logs:', error);
     } finally {
       set({ isLoading: false });
     }

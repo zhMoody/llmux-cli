@@ -10,11 +10,15 @@ import { deleteModelAlias, getAvailableModels, getModelAliases, setModelAlias } 
 import { getSettings, purgeDatabase, updateSettings } from "./routes/settings.js";
 import { getUsageDetails, getUsageSummary } from "./routes/usage.js";
 import { anthropicIngress } from "../services/anthropic_ingress.js";
+import { PricingService } from "../services/pricing.js";
  
 /**
  * 启动 HTTP Gateway
  */
 export function startGateway() {
+  // 启动模型价格自动同步任务
+  PricingService.startAutoSync();
+
   const server = Bun.serve({
     port: env.PORT,
     async fetch(req) {
@@ -134,6 +138,11 @@ export function startGateway() {
       if (url.pathname === "/api/models/available" && req.method === "GET") {
         return getAvailableModels();
       }
+      
+      if (url.pathname === "/api/models/prices" && req.method === "GET") {
+        const { getModelPrices } = await import("./routes/models.js");
+        return getModelPrices();
+      }
 
       if (url.pathname === "/api/models/aliases") {
         if (req.method === "GET") return getModelAliases();
@@ -171,6 +180,10 @@ export function startGateway() {
       }
       if (url.pathname === "/api/usage/details" && req.method === "GET") {
         return getUsageDetails(req);
+      }
+      if (url.pathname === "/api/usage/logs" && req.method === "GET") {
+        const { getUsageLogs } = await import("./routes/usage.js");
+        return getUsageLogs(req);
       }
 
       // 健康状态

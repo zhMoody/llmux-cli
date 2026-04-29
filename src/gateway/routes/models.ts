@@ -213,3 +213,16 @@ export function getTestQueueStatus() {
     progress: testQueue.total > 0 ? Math.round((testQueue.current / testQueue.total) * 100) : 0
   });
 }
+
+/**
+ * 获取模型价格列表
+ */
+export async function getModelPrices() {
+  try {
+    const stmt = db.query("SELECT * FROM model_prices");
+    const prices = stmt.all();
+    return Response.json(prices);
+  } catch (err: any) {
+    return Response.json({ error: err.message }, { status: 500 });
+  }
+}

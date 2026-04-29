@@ -104,7 +104,7 @@ export default function Dashboard() {
   }, [breakdown]);
 
   const top5ModelNames = useMemo(() => {
-    const modelTotals = recentLogs.reduce((acc: any, log) => {
+    const modelTotals = recentLogs.reduce((acc: Record<string, number>, log: any) => {
       const tokens = (log.input_tokens || 0) + (log.output_tokens || 0);
       acc[log.model] = (acc[log.model] || 0) + tokens;
       return acc;
