@@ -10,7 +10,7 @@ const cli = cac("llmux");
 cli
   .command("start", "Start the llmux gateway and Web UI")
   .option("--port <port>", "Port to listen on", { default: env.PORT })
-  .option("--no-browser", "Do not open browser on start")
+  .option("--browser", "Open browser on start")
   .action(async (options) => {
     await startCommand(options);
   });

@@ -1,7 +1,7 @@
 import { startGateway } from "../../gateway/index.js";
 import { initDb, db } from "../../db/index.js";
 
-export async function startCommand(options: { port?: number; openBrowser?: boolean }) {
+export async function startCommand(_options: { port?: number; browser?: boolean }) {
   console.log("\n🚀 Starting LLMux Gateway...");
   
   // 1. 初始化数据库
@@ -26,8 +26,5 @@ export async function startCommand(options: { port?: number; openBrowser?: boole
     console.log("=".repeat(50) + "\n");
   }
 
-  // TODO: 如果需要，打开浏览器访问 Web UI
-  if (options.openBrowser !== false) {
-    // 逻辑待实现
-  }
+  // TODO: open browser if options.browser is true
 }
