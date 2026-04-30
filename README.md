@@ -35,7 +35,7 @@ LLMux solves all of this. It's a local gateway that runs on your machine and exp
 
 **the provider Ingress.** Tools built natively for the provider (like the assistant) can call Gemini or OpenAI models through LLMux's protocol translation layer — no client-side changes required.
 
-**Quota Radar.** LLMux reads `x-ratelimit-*` headers from upstream responses and displays remaining token quota as a progress bar on each model card. Updated automatically after each model test. Requires the upstream provider to return standard `x-ratelimit-remaining-tokens` headers (OpenAI does; providers like Zhipu and Gemini currently do not). When these headers are absent, the model card shows only a green status dot and the latency (in seconds), without the progress bar.
+**Quota Radar.** LLMux reads `x-ratelimit-*` headers from upstream responses and displays remaining token quota as a progress bar on each model card. The progress bar shows the lowest quota across all accounts for that model, with a timestamp indicating when the data was last updated. Automatically refreshed after each model test. Requires the upstream provider to return standard rate-limit headers (OpenAI, Anthropic support this; providers like Zhipu and Gemini currently do not). When these headers are absent, the model card shows only a green status dot and latency (in seconds).
 
 **Self-Healing Load Balancer.** When an account is rate-limited or unhealthy, LLMux automatically routes to the next available account in milliseconds. No manual intervention, no dropped requests.
 
@@ -43,7 +43,11 @@ LLMux solves all of this. It's a local gateway that runs on your machine and exp
 
 **API Key Scoping.** Generate gateway keys and restrict each to a specific set of allowed models. Share access safely with teammates or test environments without exposing provider credentials.
 
-**Usage Intelligence.** Every request is logged — latency, token counts, success/failure. The dashboard visualizes this with high-density charts, drillable by account, model, and time range.
+**Usage Intelligence.** Every request is logged — latency, token counts, success/failure. The dashboard visualizes this with real-time metrics:
+- **Account Utilization** — shows which account handles the most traffic and how balanced your load distribution is
+- **Failover Protection** — tracks automatic account switching when rate limits are hit, displaying success rate and recovered requests
+- **Performance Analytics** — latency trends, success rates, and token consumption by model and account
+All metrics are based on actual request data, with no estimations or placeholders.
 
 **Custom Providers.** Add any OpenAI-compatible endpoint (Ollama, DeepSeek, local inference servers) alongside the built-in providers.
 
@@ -59,7 +63,11 @@ npm install -g llmux-cli
 git clone https://github.com/zhMoody/llmux-cli.git
 cd llmux-cli
 bun install
-bun run dev
+cd ui
+bun install
+cd ..
+bun run build
+bun run start
 ```
 
 ## Usage
@@ -107,10 +115,11 @@ The management dashboard opens automatically at `http://localhost:25975`.
 
 The web UI at `http://localhost:25975` provides:
 
-- **Dashboard** — real-time charts for token usage, latency distribution, and request success rates
+- **Dashboard** — real-time charts for token usage, latency distribution, request success rates, and account utilization
 - **Accounts** — enable/disable accounts, set routing weights
-- **Models** — manage aliases, map short names to provider model IDs, view quota remaining progress bars
+- **Models** — manage aliases, map short names to provider model IDs, view quota remaining with update timestamps
 - **Keys** — create and manage gateway API keys with model whitelists
+- **Usage** — detailed analytics with account utilization metrics, failover statistics, and exportable CSV reports
 - **Settings** — global configuration
 
 ## Architecture Notes
