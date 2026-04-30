@@ -143,11 +143,6 @@ export function startGateway() {
       if (url.pathname === "/api/models/available" && req.method === "GET") {
         return getAvailableModels();
       }
-      
-      if (url.pathname === "/api/models/prices" && req.method === "GET") {
-        const { getModelPrices } = await import("./routes/models.js");
-        return getModelPrices();
-      }
 
       if (url.pathname === "/api/models/aliases") {
         if (req.method === "GET") return getModelAliases();

@@ -31,31 +31,12 @@ function formatTokens(n: number) {
 
 export default function Usage() {
   const { t } = useTranslation();
-  const { summary, breakdown, logs, isLoading, fetchSummary, fetchDetails, fetchLogs } = useUsageStore();
-  
+  const { summary, breakdown, logs, isLoading, fetchSummary, fetchDetails, fetchLogs, failoverStats } = useUsageStore();
+
   const [timeRange, setTimeRange] = useState<TimeRange>('24h');
   const [activeView, setActiveView] = useState<ViewType>('breakdown');
   const [searchQuery, setSearchQuery] = useState('');
-  const [prices, setPrices] = useState<Record<string, { input: number, output: number }>>({});
   const [page, setPage] = useState(0);
-
-  // Load Pricing Data
-  useEffect(() => {
-    const loadPrices = async () => {
-      try {
-        const localRes = await fetch('/api/models/prices').catch(() => null);
-        if (localRes && localRes.ok) {
-          const localData = await localRes.json();
-          const priceMap: Record<string, any> = {};
-          localData.forEach((p: any) => {
-            priceMap[p.model_id] = { input: p.input_price, output: p.output_price };
-          });
-          setPrices(priceMap);
-        }
-      } catch (e) {}
-    };
-    loadPrices();
-  }, []);
 
   const getTimeParams = (range: TimeRange) => {
     const now = new Date();
@@ -88,34 +69,32 @@ export default function Usage() {
 
   const processedBreakdown = useMemo(() => {
     if (!breakdown) return null;
-    const calculateCost = (item: any) => {
-      // Find exact price or use a reasonable default ($0.002/$0.006 per 1k)
-      const modelKey = Object.keys(prices).find(k => item.model?.includes(k) || k.includes(item.model)) || '';
-      const p = prices[modelKey] || { input: 0.002, output: 0.006 };
-      
-      const inputCost = ((item.input || 0) / 1000) * p.input;
-      const outputCost = ((item.output || 0) / 1000) * p.output;
-      
-      return inputCost + outputCost;
-    };
+    return breakdown;
+  }, [breakdown]);
+
+  const accountUtilization = useMemo(() => {
+    const accounts = processedBreakdown?.byAccount || [];
+    const activeAccountsCount = accounts.length;
+
+    if (activeAccountsCount === 0) {
+      return { busiestAccount: '', busiestAccountPercentage: 0, activeAccountsCount: 0 };
+    }
+
+    const totalRequests = accounts.reduce((sum, a) => sum + (a.requests || 0), 0);
+    const busiest = accounts.reduce((max, a) => (a.requests || 0) > (max.requests || 0) ? a : max, accounts[0]);
+    const percentage = totalRequests > 0 ? ((busiest.requests || 0) / totalRequests) * 100 : 0;
 
     return {
-      byModel: (breakdown.byModel || []).map(m => ({ ...m, cost: calculateCost(m) })),
-      byProvider: (breakdown.byProvider || []).map(p => ({ ...p, cost: calculateCost(p) })),
-      byAccount: (breakdown.byAccount || []).map(a => ({ ...a, cost: calculateCost(a) }))
+      busiestAccount: busiest.name || `Account #${busiest.id}`,
+      busiestAccountPercentage: percentage,
+      activeAccountsCount
     };
-  }, [breakdown, prices]);
-
-  const totalCost = useMemo(() => {
-    return processedBreakdown?.byModel.reduce((acc, curr) => acc + curr.cost, 0) || 0;
   }, [processedBreakdown]);
-
-  const estimatedSavings = totalCost * 0.25;
 
   const doughnutData = useMemo<ChartData<'doughnut'>>(() => ({
     labels: processedBreakdown?.byAccount.map(a => a.name || a.id) || [],
     datasets: [{
-      data: processedBreakdown?.byAccount.map(a => a.cost) || [],
+      data: processedBreakdown?.byAccount.map(a => a.totalTokens || 0) || [],
       backgroundColor: ['#6366f1', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'],
       borderWidth: 0,
       borderRadius: 4
@@ -136,9 +115,13 @@ export default function Usage() {
 
   const handleExport = () => {
     if (!processedBreakdown) return;
-    const headers = ["Model", "Input Tokens", "Output Tokens", "Requests", "Cost (USD)"];
+    const headers = ["Model", "Input Tokens", "Output Tokens", "Requests", "Success Rate"];
     const rows = processedBreakdown.byModel.map(m => [
-      m.model, m.input, m.output, m.requests, m.cost.toFixed(4)
+      m.model,
+      m.input,
+      m.output,
+      m.requests,
+      ((m.successCount / (m.requests || 1)) * 100).toFixed(1) + '%'
     ]);
     const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -196,12 +179,12 @@ export default function Usage() {
         </div>
       </div>
 
-      <UsageStats 
-        t={t} 
-        totalCost={totalCost} 
-        estimatedSavings={estimatedSavings} 
-        summary={summary} 
-        formatTokens={formatTokens} 
+      <UsageStats
+        t={t}
+        accountUtilization={accountUtilization}
+        failoverStats={failoverStats || { failoverTriggers: 0, recoveredRequests: 0, failoverSuccessRate: 0 }}
+        summary={summary}
+        formatTokens={formatTokens}
       />
 
       <UsageCharts 

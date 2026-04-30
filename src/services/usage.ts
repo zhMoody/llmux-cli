@@ -61,7 +61,7 @@ export class UsageService {
       ]);
 
       if (params.limitCache) {
-        db.run(`UPDATE accounts SET limits_cache = ? WHERE id = ?`, [
+        db.run(`UPDATE accounts SET limits_cache = ?, limits_cache_updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [
           JSON.stringify(params.limitCache),
           params.accountId
         ]);
@@ -89,7 +89,7 @@ export class UsageService {
    */
   getSummary(startTime?: string, endTime?: string) {
     const { sql, params } = this.buildTimeQuery(
-      `SELECT 
+      `SELECT
         IFNULL(SUM(input_tokens), 0) as totalInput,
         IFNULL(SUM(output_tokens), 0) as totalOutput,
         IFNULL(AVG(latency_ms), 0) as avgLatency,
@@ -101,6 +101,47 @@ export class UsageService {
       endTime
     );
     return db.query(sql).get(...params);
+  }
+
+  /**
+   * 获取故障转移统计（自动切换账号的效果）
+   */
+  getFailoverStats(startTime?: string, endTime?: string) {
+    const { sql, params } = this.buildTimeQuery(
+      `SELECT
+        COUNT(*) as failedRequests,
+        IFNULL(SUM(CASE WHEN error_message LIKE '%429%' OR error_message LIKE '%401%' OR error_message LIKE '%403%' THEN 1 ELSE 0 END), 0) as failoverTriggers
+      FROM usage_logs
+      WHERE is_test = 0 AND success = 0`,
+      startTime,
+      endTime
+    );
+    const failureStats = db.query(sql).get(...params) as any;
+
+    // 计算救回的请求数：总成功数 - (总请求数 - 失败数)
+    // 即：如果没有故障转移，成功数应该是 (总请求数 - 失败数)，实际成功数超出的部分就是救回的
+    const { sql: summarySQL, params: summaryParams } = this.buildTimeQuery(
+      `SELECT
+        COUNT(*) as totalRequests,
+        IFNULL(SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END), 0) as successRequests
+      FROM usage_logs
+      WHERE is_test = 0`,
+      startTime,
+      endTime
+    );
+    const summary = db.query(summarySQL).get(...summaryParams) as any;
+
+    const expectedSuccess = summary.totalRequests - failureStats.failedRequests;
+    const recoveredRequests = Math.max(0, summary.successRequests - expectedSuccess);
+    const failoverSuccessRate = failureStats.failoverTriggers > 0
+      ? (recoveredRequests / failureStats.failoverTriggers) * 100
+      : 0;
+
+    return {
+      failoverTriggers: failureStats.failoverTriggers || 0,
+      recoveredRequests: recoveredRequests || 0,
+      failoverSuccessRate: Math.min(100, failoverSuccessRate)
+    };
   }
 
   /**

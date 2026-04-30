@@ -35,7 +35,7 @@ LLMux solves all of this. It's a local gateway that runs on your machine and exp
 
 **the provider Ingress.** Tools built natively for the provider (like the assistant) can call Gemini or OpenAI models through LLMux's protocol translation layer — no client-side changes required.
 
-**Quota Radar.** LLMux reads `x-ratelimit-*` headers from upstream providers and tracks remaining RPM and TPM per account in real time. You see exactly where you stand before hitting a 429.
+**Quota Radar.** LLMux reads `x-ratelimit-*` headers from upstream responses and displays remaining token quota as a progress bar on each model card. Updated automatically after each model test. Requires the upstream provider to return standard `x-ratelimit-remaining-tokens` headers (OpenAI does; providers like Zhipu and Gemini currently do not). When these headers are absent, the model card shows only a green status dot and the latency (in seconds), without the progress bar.
 
 **Self-Healing Load Balancer.** When an account is rate-limited or unhealthy, LLMux automatically routes to the next available account in milliseconds. No manual intervention, no dropped requests.
 
@@ -43,7 +43,7 @@ LLMux solves all of this. It's a local gateway that runs on your machine and exp
 
 **API Key Scoping.** Generate gateway keys and restrict each to a specific set of allowed models. Share access safely with teammates or test environments without exposing provider credentials.
 
-**Usage Intelligence.** Every request is logged — latency, token counts, success/failure, cost. The dashboard visualizes this with high-density charts, drillable by account and alias.
+**Usage Intelligence.** Every request is logged — latency, token counts, success/failure. The dashboard visualizes this with high-density charts, drillable by account, model, and time range.
 
 **Custom Providers.** Add any OpenAI-compatible endpoint (Ollama, DeepSeek, local inference servers) alongside the built-in providers.
 
@@ -108,8 +108,8 @@ The management dashboard opens automatically at `http://localhost:25975`.
 The web UI at `http://localhost:25975` provides:
 
 - **Dashboard** — real-time charts for token usage, latency distribution, and request success rates
-- **Accounts** — enable/disable accounts, set routing weights, view live rate-limit status
-- **Models** — manage aliases, map short names to provider model IDs
+- **Accounts** — enable/disable accounts, set routing weights
+- **Models** — manage aliases, map short names to provider model IDs, view quota remaining progress bars
 - **Keys** — create and manage gateway API keys with model whitelists
 - **Settings** — global configuration
 

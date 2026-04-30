@@ -108,7 +108,10 @@ export const RecentActivityList = ({ recentLogs, t, onViewReports }: RecentActiv
         bodyFont: { size: 10 },
         displayColors: false,
         callbacks: {
-          label: (context) => ` ${context.parsed.y}ms`
+          label: (context) => {
+            const v = (context.parsed.y ?? 0) as number;
+            return ` ${(v / 1000).toFixed(1)}s`;
+          }
         }
       }
     },
@@ -170,7 +173,7 @@ export const RecentActivityList = ({ recentLogs, t, onViewReports }: RecentActiv
            </div>
            <div>
               <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-tight">{t('dashboard.monitor.avgLag')}</div>
-              <div className="text-xl font-bold text-foreground">{stats.avgLatency}ms</div>
+              <div className="text-xl font-bold text-foreground">{(stats.avgLatency / 1000).toFixed(1)}s</div>
            </div>
         </div>
       </div>
@@ -185,7 +188,7 @@ export const RecentActivityList = ({ recentLogs, t, onViewReports }: RecentActiv
               model={log.model}
               time={parseServerDate(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
               status={log.success === 1 ? 'success' : 'error'}
-              latency={`${log.latency_ms}ms`}
+              latency={`${((log.latency_ms || 0) / 1000).toFixed(1)}s`}
               provider={log.provider_id}
             />
           )) : (

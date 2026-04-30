@@ -31,7 +31,7 @@ export default function Models() {
   const [activeProvider, setActiveProvider] = useState<string>('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [aliasForm, setAliasForm] = useState({ alias: '', target: '', provider: '' });
-  const [testResults, setTestResults] = useState<Record<string, { success: boolean; latency?: number; error?: string; loading?: boolean; lastChecked?: string; limitsCache?: any }>>({});
+  const [testResults, setTestResults] = useState<Record<string, { success: boolean; latency?: number; error?: string; loading?: boolean; lastChecked?: string; limitsCache?: any; limitsUpdatedAt?: string }>>({});
   const [queueStatus, setQueueStatus] = useState<{ isRunning: boolean; current: number; total: number; progress: number }>({ isRunning: false, current: 0, total: 0, progress: 0 });
   const { startTestQueue, fetchTestQueueStatus } = useModelsStore();
   const [testAllConfirm, setTestAllConfirm] = useState(false);
@@ -51,15 +51,38 @@ export default function Models() {
         const data = await res.json();
         setTestResults(prev => {
           const next = { ...prev };
+
+          // 按模型聚合，如果同一模型有多个账号，优先显示配额最低的
+          const modelMap = new Map<string, any>();
           data.forEach((row: any) => {
+            const existing = modelMap.get(row.model);
+            if (!existing) {
+              modelMap.set(row.model, row);
+            } else {
+              // 如果两个都有 limits_cache，比较剩余配额
+              if (row.limits_cache && existing.limits_cache) {
+                const rowRemaining = parseInt(row.limits_cache['x-ratelimit-remaining-tokens'] ?? row.limits_cache['x-quota-remaining'] ?? -1);
+                const existingRemaining = parseInt(existing.limits_cache['x-ratelimit-remaining-tokens'] ?? existing.limits_cache['x-quota-remaining'] ?? -1);
+                if (rowRemaining >= 0 && (existingRemaining < 0 || rowRemaining < existingRemaining)) {
+                  modelMap.set(row.model, row);
+                }
+              } else if (row.limits_cache && !existing.limits_cache) {
+                // 优先显示有配额数据的
+                modelMap.set(row.model, row);
+              }
+            }
+          });
+
+          modelMap.forEach((row, model) => {
             // Don't overwrite if it's currently loading
-            if (!next[row.model]?.loading) {
-              next[row.model] = {
+            if (!next[model]?.loading) {
+              next[model] = {
                 success: Boolean(row.success),
                 latency: row.latency,
                 error: row.error,
                 lastChecked: row.last_checked,
-                limitsCache: row.limits_cache
+                limitsCache: row.limits_cache,
+                limitsUpdatedAt: row.limits_cache_updated_at
               };
             }
           });
@@ -222,7 +245,7 @@ export default function Models() {
                                 result.success ? "bg-green-500" : "bg-red-500"
                               )} />
                               {result.latency && (
-                                <span className="text-[9px] font-bold text-muted-foreground/50">{result.latency}ms</span>
+                                <span className="text-[9px] font-bold text-muted-foreground/50">{(result.latency / 1000).toFixed(1)}s</span>
                               )}
                             </div>
                           )}
@@ -305,7 +328,7 @@ export default function Models() {
               </div>
               <div className="flex items-center gap-2">
                 {testResults[model.id]?.latency && (
-                  <span className="text-[10px] text-green-600 font-bold">{testResults[model.id]?.latency}ms</span>
+                  <span className="text-[10px] text-green-600 font-bold">{(testResults[model.id]!.latency! / 1000).toFixed(1)}s</span>
                 )}
                 {testResults[model.id]?.lastChecked && (
                   <span className="text-[9px] text-muted-foreground/60 font-medium">
@@ -321,6 +344,7 @@ export default function Models() {
               {/* 限额进度条：只有厂商返回了 ratelimit 数据才显示 */}
               {(() => {
                 const limits = testResults[model.id]?.limitsCache;
+                const limitsUpdatedAt = testResults[model.id]?.limitsUpdatedAt;
                 if (!limits) return null;
                 const remaining = parseInt(limits['x-ratelimit-remaining-tokens'] ?? limits['x-quota-remaining'] ?? -1);
                 const total = parseInt(limits['x-ratelimit-limit-tokens'] ?? limits['x-quota-total'] ?? -1);
@@ -339,6 +363,13 @@ export default function Models() {
                         style={{ width: `${pct}%` }}
                       />
                     </div>
+                    {limitsUpdatedAt && (
+                      <div className="text-[8px] text-muted-foreground/40 text-right">
+                        更新于 {parseServerDate(limitsUpdatedAt).toLocaleString(i18n.language, {
+                          month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                        })}
+                      </div>
+                    )}
                   </div>
                 );
               })()}

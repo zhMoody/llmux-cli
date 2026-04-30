@@ -8,6 +8,12 @@ export interface UsageSummary {
   successRequests: number;
 }
 
+export interface FailoverStats {
+  failoverTriggers: number;
+  recoveredRequests: number;
+  failoverSuccessRate: number;
+}
+
 export interface UsageLog {
   id: number;
   timestamp: string;
@@ -50,6 +56,7 @@ export interface UsageBreakdown {
 
 export interface UsageState {
   summary: UsageSummary | null;
+  failoverStats: FailoverStats | null;
   breakdown: UsageBreakdown | null;
   logs: any[];
   recentLogs: any[];
@@ -61,6 +68,7 @@ export interface UsageState {
 
 export const useUsageStore = create<UsageState>((set) => ({
   summary: null,
+  failoverStats: null,
   breakdown: null,
   logs: [],
   recentLogs: [],
@@ -76,11 +84,12 @@ export const useUsageStore = create<UsageState>((set) => ({
         url.searchParams.set('start', bufferedStart.toISOString().replace('T', ' ').split('.')[0]);
       }
       if (end) url.searchParams.set('end', end);
-      
+
       const res = await fetch(url.toString());
       const data = await res.json();
-      set({ 
+      set({
         summary: data.summary,
+        failoverStats: data.failoverStats || { failoverTriggers: 0, recoveredRequests: 0, failoverSuccessRate: 0 },
         recentLogs: data.recent || []
       });
     } catch (error) {

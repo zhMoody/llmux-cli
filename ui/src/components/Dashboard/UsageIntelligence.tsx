@@ -44,7 +44,7 @@ interface UsageIntelligenceProps {
   colors: string[];
 }
 
-type MetricMode = 'requests' | 'tokens' | 'cost';
+type MetricMode = 'requests' | 'tokens';
 
 export const UsageIntelligence = ({ breakdown, t, colors }: UsageIntelligenceProps) => {
   const [mode, setMode] = useState<MetricMode>('requests');
@@ -93,42 +93,26 @@ export const UsageIntelligence = ({ breakdown, t, colors }: UsageIntelligencePro
   const processedData = useMemo(() => {
     if (!breakdown) return { models: [], accounts: [] };
 
-    const calculateCost = (item: any) => {
-      // 模糊匹配价格 (处理版本号后缀)
-      const modelKey = Object.keys(prices).find(k => item.model?.includes(k) || k.includes(item.model)) || '';
-      const p = prices[modelKey] || { input: 0.002, output: 0.006 }; // 兜底价格
-      
-      const inputCost = ((item.input || 0) / 1000) * p.input;
-      const outputCost = ((item.output || 0) / 1000) * p.output;
-      // 如果是按总 Tokens 计算的 (account 分组)
-      const totalCost = item.totalTokens ? (item.totalTokens / 1000) * ((p.input + p.output) / 2) : (inputCost + outputCost);
-      
-      return totalCost;
-    };
-
     const models = (breakdown.byModel || []).map(m => ({
       ...m,
       name: m.model,
-      cost: calculateCost(m),
       successRate: m.requests > 0 ? (m.successCount / m.requests) * 100 : 0
     }));
 
     const accounts = (breakdown.byAccount || []).map(a => ({
       ...a,
-      cost: calculateCost(a),
       successRate: a.requests > 0 ? (a.successCount / a.requests) * 100 : 0
     }));
 
     return { models, accounts };
-  }, [breakdown, prices]);
+  }, [breakdown]);
 
   const chartData: ChartData<'doughnut'> = {
     labels: processedData.accounts.map(a => a.name),
     datasets: [{
       data: processedData.accounts.map(a => {
         if (mode === 'requests') return a.requests;
-        if (mode === 'tokens') return a.totalTokens;
-        return a.cost;
+        return a.totalTokens;
       }),
       backgroundColor: colors.map(c => `${c}cc`),
       hoverBackgroundColor: colors,
@@ -155,7 +139,6 @@ export const UsageIntelligence = ({ breakdown, t, colors }: UsageIntelligencePro
         callbacks: {
           label: (item) => {
             const val = item.raw as number;
-            if (mode === 'cost') return ` $${val.toFixed(4)}`;
             if (mode === 'tokens') return ` ${val.toLocaleString()} Tokens`;
             return ` ${val} Requests`;
           }
@@ -167,8 +150,7 @@ export const UsageIntelligence = ({ breakdown, t, colors }: UsageIntelligencePro
   const totalValue = useMemo(() => {
     return processedData.accounts.reduce((acc, curr) => {
       if (mode === 'requests') return acc + curr.requests;
-      if (mode === 'tokens') return acc + curr.totalTokens;
-      return acc + curr.cost;
+      return acc + curr.totalTokens;
     }, 0);
   }, [processedData, mode]);
 
@@ -187,8 +169,7 @@ export const UsageIntelligence = ({ breakdown, t, colors }: UsageIntelligencePro
         <div className="flex bg-muted/40 p-1 rounded-xl self-start">
           {[
             { id: 'requests', icon: Zap, label: t('dashboard.stats.requests') },
-            { id: 'tokens', icon: BarChart3, label: t('dashboard.stats.tokens') },
-            { id: 'cost', icon: DollarSign, label: t('dashboard.stats.cost') }
+            { id: 'tokens', icon: BarChart3, label: t('dashboard.stats.tokens') }
           ].map(m => (
             <button
               key={m.id}
@@ -213,10 +194,10 @@ export const UsageIntelligence = ({ breakdown, t, colors }: UsageIntelligencePro
           </div>
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
             <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-tighter opacity-50">
-              {mode === 'cost' ? 'Total Est.' : 'Total volume'}
+              {'Total volume'}
             </div>
             <div className="text-2xl font-black tracking-tighter text-foreground tabular-nums">
-              {mode === 'cost' ? `$${totalValue.toFixed(2)}` : totalValue.toLocaleString()}
+              {totalValue.toLocaleString()}
             </div>
             <div className="flex items-center gap-1 text-[10px] font-bold text-green-500 mt-1">
               <TrendingUp size={10} />
@@ -242,10 +223,10 @@ export const UsageIntelligence = ({ breakdown, t, colors }: UsageIntelligencePro
                   </div>
                   <div className="text-right">
                     <div className="text-xs font-bold tabular-nums">
-                      {mode === 'cost' ? `$${m.cost.toFixed(4)}` : mode === 'tokens' ? `${(m.input + m.output).toLocaleString()}` : `${m.requests}`}
+                      {mode === 'tokens' ? `${(m.input + m.output).toLocaleString()}` : `${m.requests}`}
                     </div>
                     <div className="text-[9px] text-muted-foreground/50 font-medium">
-                      {mode === 'cost' ? 'USD' : mode === 'tokens' ? 'Tokens' : 'Requests'}
+                      {mode === 'tokens' ? 'Tokens' : 'Requests'}
                     </div>
                   </div>
                 </div>
@@ -268,7 +249,7 @@ export const UsageIntelligence = ({ breakdown, t, colors }: UsageIntelligencePro
                     </div>
                     <div className="flex items-center gap-1">
                       <Clock size={10} className="text-muted-foreground/40" />
-                      <span className="text-[10px] font-bold text-muted-foreground/60 tabular-nums">{Math.round(m.avgLatency)}ms</span>
+                      <span className="text-[10px] font-bold text-muted-foreground/60 tabular-nums">{(m.avgLatency / 1000).toFixed(1)}s</span>
                     </div>
                   </div>
                 </div>

@@ -56,7 +56,7 @@ export const StatGrid = ({ summary, t }: StatGridProps) => {
       <StatCard 
         icon={Clock} 
         label={t('dashboard.stats.latency')} 
-        value={`${Math.round(summary?.avgLatency || 0)}ms`} 
+        value={`${((summary?.avgLatency || 0) / 1000).toFixed(1)}s`}
         color="text-purple-500" 
       />
     </div>

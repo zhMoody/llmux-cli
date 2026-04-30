@@ -41,5 +41,13 @@ export function initDb() {
     }
   }
 
+  try {
+    db.run("ALTER TABLE accounts ADD COLUMN limits_cache_updated_at DATETIME;");
+  } catch (e: any) {
+    if (!e.message.includes("duplicate column name")) {
+      console.error("[DB Migration Error: accounts limits_cache_updated_at]", e.message);
+    }
+  }
+
   console.log(`[DB] Database initialized at: ${DATABASE_PATH}`);
 }

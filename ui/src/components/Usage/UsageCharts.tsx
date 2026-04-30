@@ -64,17 +64,24 @@ export const UsageCharts = ({ t, doughnutData, barData, activeAccountsCount }: U
           <div className="text-xs font-bold px-2 py-1 bg-muted rounded-lg text-muted-foreground uppercase">{t('usage.performance')}</div>
         </div>
         <div className="h-[200px]">
-          <Bar 
-            data={barData} 
+          <Bar
+            data={barData}
             options={{
               responsive: true,
               maintainAspectRatio: false,
-              plugins: { legend: { display: false } },
-              scales: { 
+              plugins: {
+                legend: { display: false },
+                tooltip: {
+                  callbacks: {
+                    label: (ctx) => ` ${((ctx.parsed.y ?? 0) / 1000).toFixed(1)}s`
+                  }
+                }
+              },
+              scales: {
                 x: { grid: { display: false }, ticks: { font: { size: 10, weight: 'bold' } } },
-                y: { grid: { color: 'rgba(0,0,0,0.04)' }, ticks: { font: { size: 10 } } }
+                y: { grid: { color: 'rgba(0,0,0,0.04)' }, ticks: { font: { size: 10 }, callback: (v) => `${(Number(v) / 1000).toFixed(1)}s` } }
               }
-            }} 
+            }}
           />
         </div>
       </div>

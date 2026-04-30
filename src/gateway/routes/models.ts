@@ -143,10 +143,10 @@ export async function testModel(req: Request) {
 export async function getModelsHealth() {
   try {
     const st = db.query(`
-      SELECT u.provider_id, u.model, MAX(u.timestamp) as last_checked, u.success, u.latency_ms as latency, u.error_message as error, a.limits_cache
+      SELECT u.account_id, u.provider_id, u.model, MAX(u.timestamp) as last_checked, u.success, u.latency_ms as latency, u.error_message as error, a.limits_cache, a.limits_cache_updated_at, a.alias as account_name
       FROM usage_logs u
       LEFT JOIN accounts a ON u.account_id = a.id
-      GROUP BY u.provider_id, u.model
+      GROUP BY u.account_id, u.model
     `);
     const records = st.all().map((r: any) => ({
       ...r,
@@ -236,17 +236,4 @@ export function getTestQueueStatus() {
     current: testQueue.current,
     progress: testQueue.total > 0 ? Math.round((testQueue.current / testQueue.total) * 100) : 0
   });
-}
-
-/**
- * 获取模型价格列表
- */
-export async function getModelPrices() {
-  try {
-    const stmt = db.query("SELECT * FROM model_prices");
-    const prices = stmt.all();
-    return Response.json(prices);
-  } catch (err: any) {
-    return Response.json({ error: err.message }, { status: 500 });
-  }
 }

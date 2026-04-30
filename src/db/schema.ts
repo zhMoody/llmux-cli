@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS accounts (
   weight INTEGER DEFAULT 1,
   notes TEXT,
   limits_cache TEXT, -- JSON string storing quota/limit data (e.g. {"remaining_tokens": ...})
+  limits_cache_updated_at DATETIME, -- 配额数据更新时间
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 

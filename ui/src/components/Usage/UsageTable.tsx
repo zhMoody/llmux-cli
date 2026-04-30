@@ -15,7 +15,6 @@ export const UsageTable = ({ t, data, formatTokens }: UsageTableProps) => {
             <th className="pb-4 px-4">{t('common.models')}</th>
             <th className="pb-4 text-right px-4">{t('usage.usageIo')}</th>
             <th className="pb-4 text-right px-4">{t('usage.performance')}</th>
-            <th className="pb-4 text-right px-4">{t('usage.cost')}</th>
           </tr>
         </thead>
         <tbody className="space-y-4">
@@ -33,18 +32,13 @@ export const UsageTable = ({ t, data, formatTokens }: UsageTableProps) => {
                   <span className="text-xs text-muted-foreground/70 font-mono tracking-tighter">{formatTokens(item.input)}i / {formatTokens(item.output)}o</span>
                 </div>
               </td>
-              <td className="py-4 text-right px-4">
+              <td className="py-4 text-right px-4 rounded-r-2xl border-r border-t border-b border-transparent group-hover:border-primary/10">
                  <div className="flex flex-col items-end gap-1">
-                    <div className="text-xs font-bold tabular-nums">{Math.round(item.avgLatency)}ms</div>
+                    <div className="text-xs font-bold tabular-nums">{(item.avgLatency / 1000).toFixed(1)}s</div>
                     <div className="w-20 h-1 bg-muted rounded-full overflow-hidden">
                        <div className="h-full bg-primary/40 rounded-full" style={{ width: `${(item.successCount / (item.requests || 1) * 100)}%` }} />
                     </div>
                  </div>
-              </td>
-              <td className="py-4 text-right px-4 rounded-r-2xl border-r border-t border-b border-transparent group-hover:border-primary/10">
-                <div className="inline-flex items-center px-3 py-1 bg-primary/5 border border-primary/10 rounded-lg text-xs font-black text-primary shadow-sm shadow-primary/5">
-                  ${item.cost.toFixed(4)}
-                </div>
               </td>
             </tr>
           ))}

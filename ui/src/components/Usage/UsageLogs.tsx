@@ -37,7 +37,7 @@ export const UsageLogs = ({ t, logs, page, setPage }: UsageLogsProps) => {
                  </div>
               </td>
               <td className="py-4 text-right px-4 tabular-nums text-xs font-bold text-muted-foreground">
-                {log.latency_ms}ms
+                {(log.latency_ms / 1000).toFixed(1)}s
               </td>
               <td className="py-4 text-right px-4 rounded-r-2xl">
                  <div className={cn(

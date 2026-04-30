@@ -154,7 +154,26 @@ export class GeminiAdapter implements Adapter {
       },
     };
 
-    return Response.json(openAIResponse);
+    // 保留原始响应的配额相关头
+    const headers = new Headers({
+      'Content-Type': 'application/json'
+    });
+
+    const quotaHeaders = [
+      'x-ratelimit-limit-requests',
+      'x-ratelimit-remaining-requests',
+      'x-ratelimit-limit-tokens',
+      'x-ratelimit-remaining-tokens',
+      'x-quota-total',
+      'x-quota-remaining'
+    ];
+
+    for (const key of quotaHeaders) {
+      const value = response.headers.get(key);
+      if (value) headers.set(key, value);
+    }
+
+    return new Response(JSON.stringify(openAIResponse), { headers });
   }
 
   /**
