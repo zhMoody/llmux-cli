@@ -1,24 +1,42 @@
 import { env } from "../env.js";
 import { anthropicIngress } from "../services/anthropic_ingress.js";
 import { dispatcher } from "../services/dispatcher.js";
-import { PricingService } from "../services/pricing.js";
 import { settingsService } from "../services/settings.js";
 import { ASSETS } from "./assets.js";
-import { createAccount, deleteAccount, listAccounts, updateAccount } from "./routes/accounts.js";
+import {
+  createAccount,
+  deleteAccount,
+  listAccounts,
+  updateAccount,
+} from "./routes/accounts.js";
 import { handleWebSession } from "./routes/auth.js";
 import { handleChatRoute } from "./routes/chat.js";
 import { getHealthStatus } from "./routes/health.js";
-import { checkAuth, createApiKey, deleteApiKey, listApiKeys, updateApiKey } from "./routes/keys.js";
-import { deleteModelAlias, getAvailableModels, getModelAliases, setModelAlias } from "./routes/models.js";
-import { getSettings, purgeDatabase, updateSettings } from "./routes/settings.js";
+import {
+  checkAuth,
+  createApiKey,
+  deleteApiKey,
+  listApiKeys,
+  updateApiKey,
+} from "./routes/keys.js";
+import {
+  deleteModelAlias,
+  getAvailableModels,
+  getModelAliases,
+  setModelAlias,
+} from "./routes/models.js";
+import {
+  getSettings,
+  purgeDatabase,
+  updateSettings,
+} from "./routes/settings.js";
 import { getUsageDetails, getUsageSummary } from "./routes/usage.js";
- 
+
 /**
  * 启动 HTTP Gateway
  */
 export function startGateway() {
   // 启动模型价格自动同步任务
-  PricingService.startAutoSync();
 
   const settings = settingsService.getAll();
   const effectivePort = settings.port ? parseInt(settings.port) : env.PORT;
@@ -30,27 +48,40 @@ export function startGateway() {
       const url = new URL(req.url);
 
       // 通用错误响应适配器
-    const sendError = (message: string, type: string = "invalid_request_error", status: number = 400) => {
-      const isAnthropic = !!req.headers.get("x-api-key");
-      if (isAnthropic) {
-        return Response.json({
-          type: "error",
-          error: {
-            type: status === 401 ? "authentication_error" : type,
-            message: message
-          }
-        }, { status });
-      }
-      return Response.json({
-        error: {
-          message: message,
-          type: type,
-          code: status.toString()
+      const sendError = (
+        message: string,
+        type: string = "invalid_request_error",
+        status: number = 400,
+      ) => {
+        const isAnthropic = !!req.headers.get("x-api-key");
+        if (isAnthropic) {
+          return Response.json(
+            {
+              type: "error",
+              error: {
+                type: status === 401 ? "authentication_error" : type,
+                message: message,
+              },
+            },
+            { status },
+          );
         }
-      }, { status });
-    };
+        return Response.json(
+          {
+            error: {
+              message: message,
+              type: type,
+              code: status.toString(),
+            },
+          },
+          { status },
+        );
+      };
 
-      if (url.pathname.includes("/export") && url.pathname.startsWith("/api/accounts/")) {
+      if (
+        url.pathname.includes("/export") &&
+        url.pathname.startsWith("/api/accounts/")
+      ) {
         const id = url.pathname.split("/").filter(Boolean)[2];
         if (id && req.method === "GET") {
           const { exportAccountUsage } = await import("./routes/accounts.js");
@@ -61,34 +92,44 @@ export function startGateway() {
       // 1. 鉴权逻辑
       // 仅拦截外部 API 路径 (/v1/)，管理接口(/api/)和静态文件放行
       const normalizedPath = url.pathname.replace(/^\/v1\/v1\//, "/v1/");
-      
+
       if (normalizedPath.startsWith("/v1/")) {
         let requestedModel: string | undefined;
-        if ((normalizedPath === "/v1/chat/completions" || normalizedPath === "/v1/messages") && req.method === "POST") {
+        if (
+          (normalizedPath === "/v1/chat/completions" ||
+            normalizedPath === "/v1/messages") &&
+          req.method === "POST"
+        ) {
           try {
-            const body = await req.clone().json() as any;
+            const body = (await req.clone().json()) as any;
             requestedModel = body.model;
           } catch (e) {}
         }
 
         const auth = checkAuth(req, requestedModel);
         if (!auth.authorized) {
-          return sendError(auth.error || "Unauthorized", "authentication_error", 401);
+          return sendError(
+            auth.error || "Unauthorized",
+            "authentication_error",
+            401,
+          );
         }
       }
 
       // 2. API 路由分发
-      if (req.method === "POST" && (normalizedPath === "/v1/chat/completions")) {
+      if (req.method === "POST" && normalizedPath === "/v1/chat/completions") {
         return handleChatRoute(req);
       }
 
-      if (req.method === "POST" && (normalizedPath === "/v1/messages")) {
+      if (req.method === "POST" && normalizedPath === "/v1/messages") {
         return anthropicIngress.handleMessages(req);
       }
 
-      if (req.method === "GET" && (normalizedPath === "/v1/models")) {
-        const isAnthropic = !!req.headers.get("x-api-key") || !!req.headers.get("anthropic-version");
-        
+      if (req.method === "GET" && normalizedPath === "/v1/models") {
+        const isAnthropic =
+          !!req.headers.get("x-api-key") ||
+          !!req.headers.get("anthropic-version");
+
         if (isAnthropic) {
           return anthropicIngress.handleModels();
         }
@@ -99,8 +140,8 @@ export function startGateway() {
             id: m.alias || m.id || m,
             object: "model",
             created: Math.floor(Date.now() / 1000),
-            owned_by: "llmux"
-          }))
+            owned_by: "llmux",
+          })),
         });
       }
 
@@ -154,7 +195,10 @@ export function startGateway() {
         return getModelsHealth();
       }
 
-      if (url.pathname === "/api/models/test-queue/status" && req.method === "GET") {
+      if (
+        url.pathname === "/api/models/test-queue/status" &&
+        req.method === "GET"
+      ) {
         const { getTestQueueStatus } = await import("./routes/models.js");
         return getTestQueueStatus();
       }
@@ -168,7 +212,7 @@ export function startGateway() {
         const id = url.pathname.split("/").pop();
         if (id && req.method === "DELETE") return deleteModelAlias(id);
       }
-      
+
       if (url.pathname === "/api/models/test" && req.method === "POST") {
         const { testModel } = await import("./routes/models.js");
         return testModel(req);
@@ -202,7 +246,7 @@ export function startGateway() {
 
       // 2. 静态文件托管 (Web UI，全量内嵌)
       let filePath = url.pathname;
-      
+
       // 路由重定向：/ 或 /ui 映射到 index.html
       if (filePath === "/" || filePath === "/ui" || filePath === "/ui/") {
         filePath = "/index.html";
@@ -216,31 +260,38 @@ export function startGateway() {
       const getMimeType = (path: string) => {
         if (path.endsWith(".html")) return "text/html; charset=utf-8";
         if (path.endsWith(".css")) return "text/css; charset=utf-8";
-        if (path.endsWith(".js") || path.endsWith(".mjs")) return "application/javascript; charset=utf-8";
+        if (path.endsWith(".js") || path.endsWith(".mjs"))
+          return "application/javascript; charset=utf-8";
         if (path.endsWith(".svg")) return "image/svg+xml";
         if (path.endsWith(".json")) return "application/json; charset=utf-8";
         if (path.endsWith(".png")) return "image/png";
-        if (path.endsWith(".jpg") || path.endsWith(".jpeg")) return "image/jpeg";
+        if (path.endsWith(".jpg") || path.endsWith(".jpeg"))
+          return "image/jpeg";
         return "application/octet-stream";
       };
 
       if (ASSETS[filePath]) {
         const buffer = Buffer.from(ASSETS[filePath], "base64");
         return new Response(buffer, {
-          headers: { "Content-Type": getMimeType(filePath) }
+          headers: { "Content-Type": getMimeType(filePath) },
         });
       }
 
       // SPA 回退
-      if (!url.pathname.startsWith("/v1/") && !url.pathname.startsWith("/api/")) {
+      if (
+        !url.pathname.startsWith("/v1/") &&
+        !url.pathname.startsWith("/api/")
+      ) {
         if (ASSETS["/index.html"]) {
           return new Response(Buffer.from(ASSETS["/index.html"], "base64"), {
-            headers: { "Content-Type": "text/html; charset=utf-8" }
+            headers: { "Content-Type": "text/html; charset=utf-8" },
           });
         }
       }
 
-      return new Response("LLMux Gateway v0.1.0 (Static files not found)", { status: 404 });
+      return new Response("LLMux Gateway v0.1.0 (Static files not found)", {
+        status: 404,
+      });
     },
     error(error) {
       return new Response(`<pre>${error}\n${error.stack}</pre>`, {
