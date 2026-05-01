@@ -78,7 +78,6 @@ export class Dispatcher {
   async dispatchChat(request: ChatRequest, forcedProviderId?: string): Promise<Response> {
     const { providerId: resolvedProviderId, targetModel } = this.resolveModel(request.model);
     const providerId = forcedProviderId || resolvedProviderId;
-    const originalModel = request.model;
 
     // 覆写为真实模型名
     request.model = targetModel;

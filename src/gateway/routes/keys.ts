@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { db } from "../../db/index.js";
 
 /**
@@ -14,12 +15,16 @@ export async function listApiKeys() {
 export async function createApiKey(req: Request) {
   try {
     const { name, allowed_models } = await req.json() as any;
-    const newKey = `sk-llmux-${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
+    const newKey = `sk-llmux-${randomBytes(32).toString("hex")}`;
     
+    const allowedModelsValue = !allowed_models || allowed_models === '*'
+      ? '*'
+      : JSON.stringify(allowed_models);
+
     db.prepare(`
       INSERT INTO api_keys (name, key, allowed_models)
       VALUES (?, ?, ?)
-    `).run(name || "Untitled Key", newKey, allowed_models ? JSON.stringify(allowed_models) : "*");
+    `).run(name || "Untitled Key", newKey, allowedModelsValue);
 
     return Response.json({ success: true, key: newKey });
   } catch (err: any) {
@@ -61,9 +66,7 @@ export async function updateApiKey(id: string, req: Request) {
 /**
  * 校验权限中间件逻辑
  */
-export function checkAuth(req: Request, requestedModel?: string): { authorized: boolean; error?: string } {
-
-
+export function checkAuth(req: Request, requestedModel?: string): { authorized: boolean; error?: string; keyRecord?: any } {
   const authHeader = req.headers.get("Authorization");
   const xApiKey = req.headers.get("x-api-key");
   const providedKey = (authHeader?.startsWith("Bearer ") ? authHeader.substring(7) : authHeader) || xApiKey;
@@ -71,10 +74,8 @@ export function checkAuth(req: Request, requestedModel?: string): { authorized: 
   if (!providedKey) return { authorized: false, error: "Missing API Key. Gateway is locked." };
 
   const keyRecord = db.query("SELECT * FROM api_keys WHERE key = ?").get(providedKey) as any;
-  
   if (!keyRecord) return { authorized: false, error: "Invalid API Key" };
 
-  // 校验模型权限
   if (requestedModel && keyRecord.allowed_models !== "*") {
     try {
       const allowed = JSON.parse(keyRecord.allowed_models);
@@ -86,5 +87,40 @@ export function checkAuth(req: Request, requestedModel?: string): { authorized: 
     }
   }
 
+  return { authorized: true, keyRecord };
+}
+
+/**
+ * 仅校验 Key 是否有效，不检查模型权限（用于鉴权前置）
+ */
+export function checkAuthBasic(req: Request): { authorized: boolean; error?: string; keyRecord?: any } {
+  const authHeader = req.headers.get("Authorization");
+  const xApiKey = req.headers.get("x-api-key");
+  const providedKey = (authHeader?.startsWith("Bearer ") ? authHeader.substring(7) : authHeader) || xApiKey;
+
+  if (!providedKey) return { authorized: false, error: "Missing API Key. Gateway is locked." };
+
+  const keyRecord = db.query("SELECT * FROM api_keys WHERE key = ?").get(providedKey) as any;
+  if (!keyRecord) return { authorized: false, error: "Invalid API Key" };
+
+  return { authorized: true, keyRecord };
+}
+
+/**
+ * 校验 Key 是否有访问指定模型的权限
+ */
+export function checkAuthModel(keyRecord: any, requestedModel: string): { authorized: boolean; error?: string } {
+  const raw = keyRecord.allowed_models;
+  if (!raw || raw === '*' || raw === '"*"') return { authorized: true };
+  try {
+    const allowed = JSON.parse(raw);
+    // JSON.parse('"*"') === '*' 的情况也放行
+    if (allowed === '*') return { authorized: true };
+    if (Array.isArray(allowed) && !allowed.includes(requestedModel)) {
+      return { authorized: false, error: `Model '${requestedModel}' is not authorized for this API Key` };
+    }
+  } catch (e) {
+    return { authorized: false, error: "Invalid permission configuration on server" };
+  }
   return { authorized: true };
 }

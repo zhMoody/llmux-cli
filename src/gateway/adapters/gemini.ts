@@ -228,32 +228,51 @@ export class GeminiAdapter implements Adapter {
   }
 
   /**
-   * 简单解析 Gemini 的流式缓冲区
-   * Gemini 会发送形如 ",\r\n{\n  \"candidates\": ..." 的片段
+   * 用状态机解析 Gemini 的流式缓冲区，正确处理字符串内含花括号的情况
    */
   private parseGeminiStreamBuffer(buffer: string) {
     const items: any[] = [];
     let cleanBuffer = buffer.trim();
-    
-    // 移除开头的 [ 或 ,
+
     if (cleanBuffer.startsWith("[")) cleanBuffer = cleanBuffer.slice(1);
     if (cleanBuffer.startsWith(",")) cleanBuffer = cleanBuffer.slice(1);
 
-    // 寻找完整的 JSON 对象 {}
     let depth = 0;
     let start = -1;
+    let inString = false;
+    let escaped = false;
+
     for (let i = 0; i < cleanBuffer.length; i++) {
-      if (cleanBuffer[i] === "{") {
+      const ch = cleanBuffer[i];
+
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+
+      if (ch === "\\" && inString) {
+        escaped = true;
+        continue;
+      }
+
+      if (ch === '"') {
+        inString = !inString;
+        continue;
+      }
+
+      if (inString) continue;
+
+      if (ch === "{") {
         if (depth === 0) start = i;
         depth++;
-      } else if (cleanBuffer[i] === "}") {
+      } else if (ch === "}") {
         depth--;
         if (depth === 0 && start !== -1) {
           const jsonStr = cleanBuffer.slice(start, i + 1);
           try {
             items.push(JSON.parse(jsonStr));
-            start = -1;
           } catch (e) {}
+          start = -1;
         }
       }
     }

@@ -25,6 +25,16 @@ function cn(...classes: (string | undefined | null | false)[]) {
   return classes.filter(Boolean).join(' ');
 }
 
+function parseAllowedModels(raw: string): string[] {
+  if (!raw || raw === '*') return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 export default function KeysPage() {
   const { t } = useTranslation();
   const { keys, isLoading, fetchKeys, createKey, deleteKey, updateKey } = useKeysStore();
@@ -50,7 +60,7 @@ export default function KeysPage() {
   useEffect(() => {
     if (!isLoading && keys.length > 0) {
       // 检查是否有由于别名删除导致的“空授权”Key (且不是 '*' 全部授权)
-      const emptyKeys = keys.filter(k => k.allowed_models !== '*' && JSON.parse(k.allowed_models).length === 0);
+      const emptyKeys = keys.filter(k => k.allowed_models !== '*' && parseAllowedModels(k.allowed_models).length === 0);
       if (emptyKeys.length > 0) {
         setWarningKeyNames(emptyKeys.map(k => k.name));
         setShowWarningModal(true);
@@ -158,7 +168,7 @@ export default function KeysPage() {
                 </div>
                 {k.allowed_models !== '*' && (
                    <div className="flex flex-wrap gap-1.5 mt-2">
-                      {JSON.parse(k.allowed_models).map((m: string) => (
+                      {parseAllowedModels(k.allowed_models).map((m: string) => (
                          <div key={m} className="flex items-center gap-1.5 pl-2.5 pr-1 py-0.5 bg-primary/5 text-primary/80 text-[11px] font-black rounded border border-primary/10 group/tag hover:bg-primary/10 transition-colors shadow-sm">
                             {m}
                             <CopyButton value={m} size={9} className="p-0.5 opacity-0 group-hover/tag:opacity-100 transition-opacity" />
@@ -174,7 +184,7 @@ export default function KeysPage() {
                   <div className="flex items-center gap-1.5 justify-end">
                     <ShieldCheck size={14} className={k.allowed_models === '*' ? 'text-green-500' : 'text-blue-500'} />
                     <span className="text-xs font-bold capitalize">
-                      {k.allowed_models === '*' ? t('keys.allModels') : t('keys.specificModels', { count: JSON.parse(k.allowed_models).length })}
+                      {k.allowed_models === '*' ? t('keys.allModels') : t('keys.specificModels', { count: parseAllowedModels(k.allowed_models).length })}
                     </span>
                   </div>
                 </div>
@@ -185,7 +195,7 @@ export default function KeysPage() {
                       setGeneratedKey(null);
                       setNewKeyData({ 
                         name: k.name, 
-                        allowedModels: k.allowed_models === '*' ? '*' : JSON.parse(k.allowed_models) 
+                        allowedModels: k.allowed_models === '*' ? '*' : parseAllowedModels(k.allowed_models) 
                       });
                       setIsModalOpen(true);
                     }}

@@ -13,7 +13,8 @@ import { handleWebSession } from "./routes/auth.js";
 import { handleChatRoute } from "./routes/chat.js";
 import { getHealthStatus } from "./routes/health.js";
 import {
-  checkAuth,
+  checkAuthBasic,
+  checkAuthModel,
   createApiKey,
   deleteApiKey,
   listApiKeys,
@@ -94,25 +95,27 @@ export function startGateway() {
       const normalizedPath = url.pathname.replace(/^\/v1\/v1\//, "/v1/");
 
       if (normalizedPath.startsWith("/v1/")) {
-        let requestedModel: string | undefined;
+        // 先验证 Key 是否有效，不读 body
+        const basicAuth = checkAuthBasic(req);
+        if (!basicAuth.authorized) {
+          return sendError(basicAuth.error || "Unauthorized", "authentication_error", 401);
+        }
+
+        // 需要模型权限校验的路由，鉴权通过后再解析 body
         if (
-          (normalizedPath === "/v1/chat/completions" ||
-            normalizedPath === "/v1/messages") &&
+          (normalizedPath === "/v1/chat/completions" || normalizedPath === "/v1/messages") &&
           req.method === "POST"
         ) {
           try {
             const body = (await req.clone().json()) as any;
-            requestedModel = body.model;
+            const requestedModel = body.model;
+            if (requestedModel) {
+              const modelAuth = checkAuthModel(basicAuth.keyRecord, requestedModel);
+              if (!modelAuth.authorized) {
+                return sendError(modelAuth.error || "Unauthorized", "authentication_error", 401);
+              }
+            }
           } catch (e) {}
-        }
-
-        const auth = checkAuth(req, requestedModel);
-        if (!auth.authorized) {
-          return sendError(
-            auth.error || "Unauthorized",
-            "authentication_error",
-            401,
-          );
         }
       }
 

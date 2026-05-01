@@ -1,4 +1,4 @@
-import { expect, test, describe, spyOn, beforeEach } from "bun:test";
+import { expect, test, describe, spyOn, beforeEach, afterAll } from "bun:test";
 import { dispatcher } from "../services/dispatcher";
 import { db } from "../db/index";
 import { encryptKey } from "../services/crypto";
@@ -6,17 +6,21 @@ import { openaiAdapter } from "../gateway/adapters/openai";
 
 describe("Dispatcher Logic", () => {
   beforeEach(() => {
-    // 清理并准备测试数据
     db.run("DELETE FROM accounts");
     db.run("DELETE FROM model_aliases");
-    
+
     const key1 = encryptKey("key-1");
     const key2 = encryptKey("key-2");
-    
+
     db.run("INSERT INTO accounts (alias, provider_id, api_key, is_active) VALUES (?, ?, ?, ?)", ["acc1", "openai", key1, 1]);
     db.run("INSERT INTO accounts (alias, provider_id, api_key, is_active) VALUES (?, ?, ?, ?)", ["acc2", "openai", key2, 1]);
-    
+
     db.run("INSERT INTO model_aliases (alias, target_model, provider_id) VALUES (?, ?, ?)", ["my-gpt", "gpt-4o", "openai"]);
+  });
+
+  afterAll(() => {
+    db.run("DELETE FROM accounts");
+    db.run("DELETE FROM model_aliases");
   });
 
   test("Model resolution: Alias and Prefix", () => {

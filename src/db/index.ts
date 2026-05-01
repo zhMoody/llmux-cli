@@ -1,8 +1,9 @@
 import { Database } from "bun:sqlite";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
-import { DATABASE_PATH, env } from "../env.js";
+import { DATABASE_PATH } from "../env.js";
 import { INIT_TABLES, SEED_DATA } from "./schema.js";
+import { migrateLegacyKeys } from "../services/crypto.js";
 
 // 确保目录存在
 try {
@@ -50,4 +51,5 @@ export function initDb() {
   }
 
   console.log(`[DB] Database initialized at: ${DATABASE_PATH}`);
+  migrateLegacyKeys(db);
 }
