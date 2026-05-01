@@ -88,8 +88,9 @@ export class Dispatcher {
       return Response.json({ error: `No active accounts available for: ${providerId}` }, { status: 503 });
     }
 
-    // 获取当前轮询索引
+    // 获取当前轮询索引，立即推进避免并发请求撞同一账号
     let idx = accountIndices.get(providerId) || 0;
+    accountIndices.set(providerId, (idx + 1) % accounts.length);
     const maxAttempts = accounts.length;
     let attempts = 0;
     let lastResponse: Response | null = null;
@@ -154,10 +155,7 @@ export class Dispatcher {
           continue;
         }
 
-        // 成功响应逻辑
-        accountIndices.set(providerId, (currentIdx + 1) % accounts.length);
-
-        // 如果是非流式响应，我们尝试解析 Token 数量（通过克隆响应体避免干扰后续流程）
+        // 非流式响应，解析 Token 数量（克隆响应体避免干扰后续流程）
         if (!request.stream) {
           this.logNonStreamUsage(response.clone(), account.id, account.provider_id, targetModel, latency, request.is_test);
         } else {

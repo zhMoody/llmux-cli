@@ -4,7 +4,7 @@
 
 <p align="center">
   <h1 align="center">LLMux</h1>
-  <p align="center">A local AI API gateway and multiplexer for developers</p>
+  <p align="center">A personal, local AI API gateway and multiplexer for developers</p>
 </p>
 
 <p align="center">
@@ -25,6 +25,8 @@
 
 ## Why LLMux?
 
+> LLMux is a **personal, local-first** tool. It runs on your own machine and is designed for individual developers or small teams — not as a shared production gateway.
+
 As a developer, you probably have accounts across OpenAI, the provider, and Google — each with their own SDKs, rate limits, and API formats. You hit a quota cap on one account mid-session, switch manually, and re-configure your tools. You want to use the assistant but need Gemini's throughput. You want to share API access with teammates without exposing your actual keys.
 
 LLMux solves all of this. It's a local gateway that runs on your machine and exposes a single unified endpoint. Your tools talk to LLMux; LLMux handles the rest — routing, protocol translation, load balancing, key scoping, and usage tracking.
@@ -38,6 +40,8 @@ LLMux solves all of this. It's a local gateway that runs on your machine and exp
 **Quota Radar.** LLMux reads `x-ratelimit-*` headers from upstream responses and displays remaining token quota as a progress bar on each model card. The progress bar shows the lowest quota across all accounts for that model, with a timestamp indicating when the data was last updated. Automatically refreshed after each model test. Requires the upstream provider to return standard rate-limit headers (OpenAI, Anthropic support this; providers like Zhipu and Gemini currently do not). When these headers are absent, the model card shows only a green status dot and latency (in seconds).
 
 **Self-Healing Load Balancer.** When an account is rate-limited or unhealthy, LLMux automatically routes to the next available account in milliseconds. No manual intervention, no dropped requests.
+
+> **Note:** LLMux is designed for multi-account load distribution. The self-healing and load balancing features rely on having multiple accounts per provider. For best results — especially in shared or team environments — add multiple accounts to maximize throughput and resilience.
 
 **Model Aliases.** Map verbose model IDs like `claude-3-7-sonnet-20250219` to short aliases like `c37`. Swap the underlying model anytime without touching client configuration.
 
