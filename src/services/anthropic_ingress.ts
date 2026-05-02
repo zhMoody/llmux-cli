@@ -87,8 +87,15 @@ export class AnthropicIngressService {
         const openAIParts: any[] = [];
         const toolCalls: any[] = [];
 
+        let reasoningContent: string | undefined;
+        let reasoningSignature: string | undefined;
+
         for (const block of msg.content) {
-          if (block.type === "text") {
+          if (block.type === "thinking") {
+            // 提取推理内容，用于多轮对话时原样传回 Anthropic API
+            reasoningContent = block.thinking;
+            reasoningSignature = block.signature;
+          } else if (block.type === "text") {
             openAIParts.push({ type: "text", text: block.text });
           } else if (block.type === "image") {
             // Anthropic image -> OpenAI image_url
@@ -131,6 +138,7 @@ export class AnthropicIngressService {
             role: msg.role,
             content: finalContent,
             tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
+            ...(reasoningContent ? { reasoning_content: reasoningContent, reasoning_signature: reasoningSignature } : {}),
           } as any);
         }
       }
@@ -166,6 +174,11 @@ export class AnthropicIngressService {
     const data = await response.json() as any;
     const choice = data.choices[0];
     const content: any[] = [];
+
+    // 将 DeepSeek 等推理模型的 reasoning_content 转为 Anthropic thinking block
+    if (choice.message?.reasoning_content) {
+      content.push({ type: "thinking", thinking: choice.message.reasoning_content, signature: choice.message.reasoning_signature || "" });
+    }
 
     if (choice.message?.content) {
       content.push({ type: "text", text: choice.message.content });
@@ -208,17 +221,13 @@ export class AnthropicIngressService {
     (async () => {
       let messageId = "msg_" + Math.random().toString(36).slice(2);
       let startedToolIndices = new Set<number>();
+      let thinkingStarted = false;
+      let textBlockIndex = 0; // thinking 占 index 0，text 顺延
       
       // 发送消息开始事件
       await writer.write(encoder.encode(`event: message_start\ndata: ${JSON.stringify({
         type: "message_start",
         message: { id: messageId, type: "message", role: "assistant", model: model, usage: { input_tokens: 0, output_tokens: 0 } }
-      })}\n\n`));
-
-      await writer.write(encoder.encode(`event: content_block_start\ndata: ${JSON.stringify({
-        type: "content_block_start",
-        index: 0,
-        content_block: { type: "text", text: "" }
       })}\n\n`));
 
       let buffer = "";
@@ -233,16 +242,59 @@ export class AnthropicIngressService {
         for (const line of lines) {
           const trimmed = line.trim();
           if (!trimmed.startsWith("data: ") || trimmed.includes("[DONE]")) continue;
-          
+
           try {
             const openAIIn = JSON.parse(trimmed.slice(6));
             const delta = openAIIn.choices[0]?.delta;
-            
-            // 1. 处理文本增量
-            if (delta?.content) {
+
+            // 1. 处理推理增量（reasoning_content / reasoning_signature）
+            if (delta?.reasoning_content) {
+              if (!thinkingStarted) {
+                thinkingStarted = true;
+                textBlockIndex = 1; // text block 顺延到 index 1
+                await writer.write(encoder.encode(`event: content_block_start\ndata: ${JSON.stringify({
+                  type: "content_block_start",
+                  index: 0,
+                  content_block: { type: "thinking", thinking: "" }
+                })}\n\n`));
+              }
               await writer.write(encoder.encode(`event: content_block_delta\ndata: ${JSON.stringify({
                 type: "content_block_delta",
                 index: 0,
+                delta: { type: "thinking_delta", thinking: delta.reasoning_content }
+              })}\n\n`));
+            }
+            if (delta?.reasoning_signature) {
+              await writer.write(encoder.encode(`event: content_block_delta\ndata: ${JSON.stringify({
+                type: "content_block_delta",
+                index: 0,
+                delta: { type: "signature_delta", signature: delta.reasoning_signature }
+              })}\n\n`));
+            }
+
+            // 2. 处理文本增量
+            if (delta?.content) {
+              if (!thinkingStarted && textBlockIndex === 0) {
+                // 没有 thinking block，正常从 index 0 开始
+                await writer.write(encoder.encode(`event: content_block_start\ndata: ${JSON.stringify({
+                  type: "content_block_start",
+                  index: 0,
+                  content_block: { type: "text", text: "" }
+                })}\n\n`));
+                textBlockIndex = -1; // 标记已发送
+              } else if (thinkingStarted && textBlockIndex === 1) {
+                // 有 thinking block，先关闭它，再开 text block
+                await writer.write(encoder.encode(`event: content_block_stop\ndata: ${JSON.stringify({ type: "content_block_stop", index: 0 })}\n\n`));
+                await writer.write(encoder.encode(`event: content_block_start\ndata: ${JSON.stringify({
+                  type: "content_block_start",
+                  index: 1,
+                  content_block: { type: "text", text: "" }
+                })}\n\n`));
+                textBlockIndex = -1; // 标记已发送
+              }
+              await writer.write(encoder.encode(`event: content_block_delta\ndata: ${JSON.stringify({
+                type: "content_block_delta",
+                index: thinkingStarted ? 1 : 0,
                 delta: { type: "text_delta", text: delta.content }
               })}\n\n`));
             }
@@ -250,7 +302,9 @@ export class AnthropicIngressService {
             // 2. 处理工具调用增量
             if (delta?.tool_calls) {
               for (const tc of delta.tool_calls) {
-                const idx = tc.index + 1; // 文本是 index 0，所以工具从 1 开始
+                // text 占 index 0（或 thinking=0, text=1），工具从后续 index 开始
+                const baseToolIndex = thinkingStarted ? 2 : 1;
+                const idx = baseToolIndex + tc.index;
                 if (!startedToolIndices.has(tc.index)) {
                   startedToolIndices.add(tc.index);
                   // 发送工具开始事件
@@ -291,10 +345,18 @@ export class AnthropicIngressService {
         }
       }
 
-      // 结束所有内容块
-      await writer.write(encoder.encode(`event: content_block_stop\ndata: ${JSON.stringify({ type: "content_block_stop", index: 0 })}\n\n`));
+      // 结束所有内容块：只关闭已打开的 block
+      // textBlockIndex === -1 表示 text block 已发送（需要关闭）
+      if (textBlockIndex === -1) {
+        const closingTextIndex = thinkingStarted ? 1 : 0;
+        await writer.write(encoder.encode(`event: content_block_stop\ndata: ${JSON.stringify({ type: "content_block_stop", index: closingTextIndex })}\n\n`));
+      } else if (thinkingStarted) {
+        // 有 thinking block 但没有 text block，关闭 thinking block
+        await writer.write(encoder.encode(`event: content_block_stop\ndata: ${JSON.stringify({ type: "content_block_stop", index: 0 })}\n\n`));
+      }
       for (const idx of startedToolIndices) {
-        await writer.write(encoder.encode(`event: content_block_stop\ndata: ${JSON.stringify({ type: "content_block_stop", index: idx + 1 })}\n\n`));
+        const toolBlockIndex = (thinkingStarted ? 2 : 1) + idx;
+        await writer.write(encoder.encode(`event: content_block_stop\ndata: ${JSON.stringify({ type: "content_block_stop", index: toolBlockIndex })}\n\n`));
       }
       await writer.write(encoder.encode(`event: message_stop\ndata: ${JSON.stringify({ type: "message_stop" })}\n\n`));
       await writer.close();

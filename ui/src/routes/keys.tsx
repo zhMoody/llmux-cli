@@ -94,6 +94,12 @@ export default function KeysPage() {
   // 限制：只能选择已创建别名的模型
   const sortedModels = aliases.map(a => ({ id: a.alias, provider: a.provider_id }));
 
+  // 提交条件：有别名才能创建 key；指定模型时必须至少勾选一个
+  const canSubmit = sortedModels.length > 0 && (
+    newKeyData.allowedModels === '*' ||
+    (Array.isArray(newKeyData.allowedModels) && newKeyData.allowedModels.length > 0)
+  );
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex items-center justify-between">
@@ -335,6 +341,13 @@ export default function KeysPage() {
               </div>
             )}
 
+            {!canSubmit && (
+              <p className="text-center text-xs text-muted-foreground pb-1">
+                {sortedModels.length === 0
+                  ? t('keys.noAliasesHint')
+                  : t('keys.selectModelHint', '请至少选择一个模型')}
+              </p>
+            )}
             <div className="flex gap-3 pt-2">
               <button 
                 type="button" 
@@ -343,9 +356,10 @@ export default function KeysPage() {
               >
                 {t('common.cancel')}
               </button>
-              <button 
+              <button
                 type="submit"
-                className="flex-1 py-3 bg-primary text-primary-foreground rounded-xl font-bold hover:opacity-90 transition-all"
+                disabled={!canSubmit}
+                className="flex-1 py-3 bg-primary text-primary-foreground rounded-xl font-bold hover:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {t('common.save')}
               </button>

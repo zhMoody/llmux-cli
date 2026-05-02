@@ -103,6 +103,19 @@ export class AnthropicAdapter implements Adapter {
           });
         }
 
+        // Anthropic extended thinking: reasoning_content must be passed back as a thinking block
+        const msgAny = msg as any;
+        if (msg.role === "assistant" && msgAny.reasoning_content) {
+          const thinkingBlock = { type: "thinking", thinking: msgAny.reasoning_content, signature: msgAny.reasoning_signature || "" };
+          if (Array.isArray(content)) {
+            content = [thinkingBlock, ...content];
+          } else if (typeof content === "string" && content) {
+            content = [thinkingBlock, { type: "text", text: content }];
+          } else {
+            content = [thinkingBlock];
+          }
+        }
+
         filteredMessages.push({
           role: msg.role === "assistant" ? "assistant" : "user",
           content,
@@ -118,6 +131,20 @@ export class AnthropicAdapter implements Adapter {
    */
   private async handleNormalResponse(response: Response, model: string): Promise<Response> {
     const data = await response.json() as any;
+
+    // 提取 thinking block 和 text
+    let reasoningContent: string | undefined;
+    let reasoningSignature: string | undefined;
+    let textContent = "";
+    for (const block of (data.content || [])) {
+      if (block.type === "thinking") {
+        reasoningContent = block.thinking;
+        reasoningSignature = block.signature;
+      } else if (block.type === "text") {
+        textContent += block.text;
+      }
+    }
+
     const openAIResponse = {
       id: data.id,
       object: "chat.completion",
@@ -128,7 +155,8 @@ export class AnthropicAdapter implements Adapter {
           index: 0,
           message: {
             role: "assistant",
-            content: data.content[0]?.text || "",
+            content: textContent || null,
+            ...(reasoningContent ? { reasoning_content: reasoningContent, reasoning_signature: reasoningSignature } : {}),
           },
           finish_reason: data.stop_reason === "end_turn" ? "stop" : data.stop_reason,
         },
@@ -207,6 +235,14 @@ export class AnthropicAdapter implements Adapter {
       case "content_block_delta":
         if (event.delta?.type === "text_delta") {
           base.choices[0].delta = { content: event.delta.text };
+          return base;
+        }
+        if (event.delta?.type === "thinking_delta") {
+          base.choices[0].delta = { reasoning_content: event.delta.thinking } as any;
+          return base;
+        }
+        if (event.delta?.type === "signature_delta") {
+          base.choices[0].delta = { reasoning_signature: event.delta.signature } as any;
           return base;
         }
         break;
