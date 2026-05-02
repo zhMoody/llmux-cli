@@ -1,6 +1,6 @@
 {
   "name": "llmux-cli",
-  "version": "0.3.14",
+  "version": "0.3.15",
   "description": "LLM + mux (multiplexer), local AI API aggregation tool.",
   "type": "module",
   "main": "src/cli/index.ts",
