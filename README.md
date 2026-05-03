@@ -27,7 +27,7 @@
 
 > LLMux is a **personal, local-first** tool. It runs on your own machine and is designed for individual developers or small teams — not as a shared production gateway.
 
-As a developer, you probably have accounts across OpenAI, the provider, and Google — each with their own SDKs, rate limits, and API formats. You hit a quota cap on one account mid-session, switch manually, and re-configure your tools. You want to use the assistant but need Gemini's throughput. You want to share API access with teammates without exposing your actual keys.
+As a developer, you probably have accounts across OpenAI, anthropic, and Google — each with their own SDKs, rate limits, and API formats. You hit a quota cap on one account mid-session, switch manually, and re-configure your tools. You want to use Claude Code but need Gemini's throughput. You want to share API access with teammates without exposing your actual keys.
 
 LLMux solves all of this. It's a local gateway that runs on your machine and exposes a single unified endpoint. Your tools talk to LLMux; LLMux handles the rest — routing, protocol translation, load balancing, key scoping, and usage tracking.
 
@@ -35,7 +35,7 @@ LLMux solves all of this. It's a local gateway that runs on your machine and exp
 
 **One endpoint for everything.** Point any OpenAI-compatible client to `http://localhost:25975/v1` and reach any model across any provider.
 
-**the provider Ingress.** Tools built natively for the provider (like the assistant) can call Gemini or OpenAI models through LLMux's protocol translation layer — no client-side changes required.
+**anthropic Ingress.** Tools built natively for anthropic (like Claude Code) can call Gemini or OpenAI models through LLMux's protocol translation layer — no client-side changes required.
 
 **Quota Radar.** LLMux reads `x-ratelimit-*` headers from upstream responses and displays remaining token quota as a progress bar on each model card. The progress bar shows the lowest quota across all accounts for that model, with a timestamp indicating when the data was last updated. Automatically refreshed after each model test. Requires the upstream provider to return standard rate-limit headers (OpenAI, Anthropic support this; providers like Zhipu and Gemini currently do not). When these headers are absent, the model card shows only a green status dot and latency (in seconds).
 
@@ -48,21 +48,24 @@ LLMux solves all of this. It's a local gateway that runs on your machine and exp
 **API Key Scoping.** Generate gateway keys and restrict each to a specific set of allowed models. Share access safely with teammates or test environments without exposing provider credentials.
 
 **Usage Intelligence.** Every request is logged — latency, token counts, success/failure. The dashboard visualizes this with real-time metrics:
+
 - **Account Utilization** — shows which account handles the most traffic and how balanced your load distribution is
 - **Failover Protection** — tracks automatic account switching when rate limits are hit, displaying success rate and recovered requests
 - **Performance Analytics** — latency trends, success rates, and token consumption by model and account
-All metrics are based on actual request data, with no estimations or placeholders.
+  All metrics are based on actual request data, with no estimations or placeholders.
 
 **Custom Providers.** Add any OpenAI-compatible endpoint (Ollama, DeepSeek, local inference servers) alongside the built-in providers.
 
 ## Installation
 
 **Recommended — global npm install:**
+
 ```bash
 npm install -g llmux-cli
 ```
 
 **From source:**
+
 ```bash
 git clone https://github.com/zhMoody/llmux-cli.git
 cd llmux-cli
@@ -77,6 +80,7 @@ bun run start
 ## Usage
 
 Start the gateway:
+
 ```bash
 llmux start
 ```
@@ -84,7 +88,8 @@ llmux start
 The management dashboard opens automatically at `http://localhost:25975`.
 
 **Setup in 5 steps:**
-1. **Accounts** — add your API keys (OpenAI, the provider, Gemini, or any custom endpoint)
+
+1. **Accounts** — add your API keys (OpenAI, anthropic, Gemini, or any custom endpoint)
 2. **Models** — create aliases and run connection tests
 3. **Keys** — generate a gateway API key, optionally restrict to specific models
 4. **Client** — set your tool's Base URL to `http://localhost:25975/v1` and API key to your gateway key
@@ -92,28 +97,28 @@ The management dashboard opens automatically at `http://localhost:25975`.
 
 ## CLI Reference
 
-| Command | Description |
-|---|---|
-| `llmux start` | Start the gateway |
+| Command           | Description           |
+| ----------------- | --------------------- |
+| `llmux start`     | Start the gateway     |
 | `llmux --version` | Print current version |
 
 **Planned (not yet implemented):**
 
-| Command / Flag | Description |
-|---|---|
-| `llmux start --port <n>` | Override the default port (25975) |
-| `llmux start --browser` | Auto-open the dashboard in browser |
-| `llmux stop` | Stop the gateway daemon |
-| `llmux status` | Check service health |
+| Command / Flag           | Description                        |
+| ------------------------ | ---------------------------------- |
+| `llmux start --port <n>` | Override the default port (25975)  |
+| `llmux start --browser`  | Auto-open the dashboard in browser |
+| `llmux stop`             | Stop the gateway daemon            |
+| `llmux status`           | Check service health               |
 
 ## Environment Variables
 
-| Variable | Default | Description |
-|---|---|---|
-| `PORT` | `25975` | Gateway and dashboard port |
-| `LOG_LEVEL` | `info` | Log verbosity: `debug`, `info`, `warn`, `error` |
-| `DATA_DIR` | `~/.config/llmux` | Location of `db.sqlite` and logs |
-| `MASTER_KEY` | (auto) | Encryption key for stored credentials |
+| Variable     | Default           | Description                                     |
+| ------------ | ----------------- | ----------------------------------------------- |
+| `PORT`       | `25975`           | Gateway and dashboard port                      |
+| `LOG_LEVEL`  | `info`            | Log verbosity: `debug`, `info`, `warn`, `error` |
+| `DATA_DIR`   | `~/.config/llmux` | Location of `db.sqlite` and logs                |
+| `MASTER_KEY` | (auto)            | Encryption key for stored credentials           |
 
 ## Dashboard
 

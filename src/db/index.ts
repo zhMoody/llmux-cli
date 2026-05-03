@@ -58,6 +58,38 @@ export function initDb() {
     }
   }
 
+  // 迁移 usage_logs.timestamp：DATETIME 字符串 → 毫秒 INTEGER
+  try {
+    const sample = db.query("SELECT timestamp FROM usage_logs LIMIT 1").get() as { timestamp: unknown } | undefined;
+    if (sample && typeof sample.timestamp === "string") {
+      console.log("[DB Migration] Converting usage_logs.timestamp from UTC string to milliseconds...");
+      db.transaction(() => {
+        db.run(`CREATE TABLE usage_logs_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          timestamp INTEGER NOT NULL,
+          account_id INTEGER,
+          provider_id TEXT,
+          model TEXT,
+          input_tokens INTEGER,
+          output_tokens INTEGER,
+          latency_ms INTEGER,
+          success INTEGER,
+          error_message TEXT,
+          is_test INTEGER DEFAULT 0
+        );`);
+        db.run(`INSERT INTO usage_logs_new (id, timestamp, account_id, provider_id, model, input_tokens, output_tokens, latency_ms, success, error_message, is_test)
+          SELECT id, CAST(strftime('%s', timestamp) AS INTEGER) * 1000,
+            account_id, provider_id, model, input_tokens, output_tokens, latency_ms, success, error_message, is_test
+          FROM usage_logs;`);
+        db.run("DROP TABLE usage_logs;");
+        db.run("ALTER TABLE usage_logs_new RENAME TO usage_logs;");
+      })();
+      console.log("[DB Migration] usage_logs.timestamp migration completed");
+    }
+  } catch (e: any) {
+    console.error("[DB Migration Error: usage_logs timestamp]", e.message);
+  }
+
   console.log(`[DB] Database initialized at: ${DATABASE_PATH}`);
   migrateLegacyKeys(db);
 }

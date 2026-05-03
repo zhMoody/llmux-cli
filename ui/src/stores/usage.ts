@@ -61,9 +61,9 @@ export interface UsageState {
   logs: any[];
   recentLogs: any[];
   isLoading: boolean;
-  fetchSummary: (start?: string, end?: string) => Promise<void>;
-  fetchDetails: (start?: string, end?: string) => Promise<void>;
-  fetchLogs: (params: { start?: string, end?: string, model?: string, provider?: string, success?: number, limit?: number, offset?: number }) => Promise<void>;
+  fetchSummary: (start?: number, end?: number) => Promise<void>;
+  fetchDetails: (start?: number, end?: number) => Promise<void>;
+  fetchLogs: (params: { start?: number, end?: number, model?: string, provider?: string, success?: number, limit?: number, offset?: number }) => Promise<void>;
 }
 
 export const useUsageStore = create<UsageState>((set) => ({
@@ -74,16 +74,12 @@ export const useUsageStore = create<UsageState>((set) => ({
   recentLogs: [],
   isLoading: false,
 
-  fetchSummary: async (start, end) => {
+  fetchSummary: async (start?: number, end?: number) => {
     set({ isLoading: true });
     try {
       const url = new URL('/api/usage/summary', window.location.origin);
-      // 增加 5 分钟容错余量，防止因为时钟漂移导致边缘数据丢失
-      if (start) {
-        const bufferedStart = new Date(new Date(start.replace(' ', 'T') + 'Z').getTime() - 300000);
-        url.searchParams.set('start', bufferedStart.toISOString().replace('T', ' ').split('.')[0]);
-      }
-      if (end) url.searchParams.set('end', end);
+      if (start) url.searchParams.set('start', String(start));
+      if (end) url.searchParams.set('end', String(end));
 
       const res = await fetch(url.toString());
       const data = await res.json();
@@ -99,15 +95,11 @@ export const useUsageStore = create<UsageState>((set) => ({
     }
   },
 
-  fetchDetails: async (start, end) => {
-    // 详情请求也使用 5 分钟容错
+  fetchDetails: async (start?: number, end?: number) => {
     try {
       const url = new URL('/api/usage/details', window.location.origin);
-      if (start) {
-        const bufferedStart = new Date(new Date(start.replace(' ', 'T') + 'Z').getTime() - 300000);
-        url.searchParams.set('start', bufferedStart.toISOString().replace('T', ' ').split('.')[0]);
-      }
-      if (end) url.searchParams.set('end', end);
+      if (start) url.searchParams.set('start', String(start));
+      if (end) url.searchParams.set('end', String(end));
 
       const res = await fetch(url.toString());
       const data = await res.json();

@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS model_prices (
 -- 用量记录
 CREATE TABLE IF NOT EXISTS usage_logs (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+  timestamp INTEGER NOT NULL, -- 毫秒时间戳
   account_id INTEGER,
   provider_id TEXT,
   model TEXT,

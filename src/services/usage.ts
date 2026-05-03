@@ -17,11 +17,11 @@ export class UsageService {
   /**
    * 辅助方法：构建时间范围 SQL 片段
    */
-  private buildTimeQuery(baseQuery: string, startTime?: string, endTime?: string): { sql: string; params: any[] } {
+  private buildTimeQuery(baseQuery: string, startTime?: number, endTime?: number): { sql: string; params: any[] } {
     let sql = baseQuery;
     const params: any[] = [];
     const hasWhere = baseQuery.toUpperCase().includes("WHERE");
-    
+
     if (startTime || endTime) {
       sql += hasWhere ? " AND " : " WHERE ";
       if (startTime && endTime) {
@@ -35,7 +35,7 @@ export class UsageService {
         params.push(endTime);
       }
     }
-    
+
     return { sql, params };
   }
 
@@ -46,9 +46,10 @@ export class UsageService {
     try {
       db.run(`
         INSERT INTO usage_logs (
-          account_id, provider_id, model, input_tokens, output_tokens, latency_ms, success, error_message, is_test
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          timestamp, account_id, provider_id, model, input_tokens, output_tokens, latency_ms, success, error_message, is_test
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [
+        Date.now(),
         params.accountId,
         params.providerId,
         params.model,
@@ -74,10 +75,10 @@ export class UsageService {
   /**
    * 获取最近的用量记录
    */
-  getRecentLogs(limit: number = 20, startTime?: string, endTime?: string) {
+  getRecentLogs(limit: number = 20, startTime?: number, endTime?: number) {
     const { sql, params } = this.buildTimeQuery(
-      "SELECT * FROM usage_logs WHERE is_test = 0", 
-      startTime, 
+      "SELECT * FROM usage_logs WHERE is_test = 0",
+      startTime,
       endTime
     );
     const stmt = db.query(`${sql} ORDER BY timestamp DESC LIMIT ?`);
@@ -87,7 +88,7 @@ export class UsageService {
   /**
    * 获取用量总览（总 Token，请求数等）
    */
-  getSummary(startTime?: string, endTime?: string) {
+  getSummary(startTime?: number, endTime?: number) {
     const { sql, params } = this.buildTimeQuery(
       `SELECT
         IFNULL(SUM(input_tokens), 0) as totalInput,
@@ -106,7 +107,7 @@ export class UsageService {
   /**
    * 获取故障转移统计（自动切换账号的效果）
    */
-  getFailoverStats(startTime?: string, endTime?: string) {
+  getFailoverStats(startTime?: number, endTime?: number) {
     const { sql, params } = this.buildTimeQuery(
       `SELECT
         COUNT(*) as failedRequests,
@@ -147,7 +148,7 @@ export class UsageService {
   /**
    * 按服务商获取用量分布
    */
-  getBreakdownByProvider(startTime?: string, endTime?: string) {
+  getBreakdownByProvider(startTime?: number, endTime?: number) {
     const { sql, params } = this.buildTimeQuery(
       `SELECT 
         provider_id as id,
@@ -168,7 +169,7 @@ export class UsageService {
   /**
    * 按模型获取用量分布
    */
-  getBreakdownByModel(startTime?: string, endTime?: string) {
+  getBreakdownByModel(startTime?: number, endTime?: number) {
     const { sql, params } = this.buildTimeQuery(
       `SELECT 
         model,
@@ -187,7 +188,7 @@ export class UsageService {
   /**
    * 按账户获取用量分布
    */
-  getBreakdownByAccount(startTime?: string, endTime?: string) {
+  getBreakdownByAccount(startTime?: number, endTime?: number) {
     const { sql, params } = this.buildTimeQuery(
       `SELECT 
         a.id as id,
@@ -211,11 +212,11 @@ export class UsageService {
   /**
    * 获取详细审计日志（分页与过滤）
    */
-  getDetailedLogs(options: { 
-    startTime?: string, 
-    endTime?: string, 
-    model?: string, 
-    provider?: string, 
+  getDetailedLogs(options: {
+    startTime?: number,
+    endTime?: number,
+    model?: string,
+    provider?: string,
     success?: number,
     limit?: number,
     offset?: number

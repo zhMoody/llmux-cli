@@ -42,16 +42,13 @@ export default function Usage() {
     const now = new Date();
     let start: Date | null = null;
     switch (range) {
-      case '1h': start = new Date(now.getTime() - 3600000); break;
-      case '24h': start = new Date(now.getTime() - 86400000); break;
-      case '7d': start = new Date(now.getTime() - 7 * 86400000); break;
-      case '30d': start = new Date(now.getTime() - 30 * 86400000); break;
-      case 'all': start = null; break;
+      case '1h': { const h = new Date(now.getTime() - 3600000); h.setMinutes(0,0,0); start = h; break; }
+      case '24h': { const d = new Date(now); d.setHours(0,0,0,0); start = d; break; }
+      case '7d': { const d = new Date(now); d.setDate(d.getDate()-7); d.setHours(0,0,0,0); start = d; break; }
+      case '30d':
+      case 'all': { start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0); break; }
     }
-    return {
-      start: start ? start.toISOString().replace('T', ' ').split('.')[0] : undefined,
-      end: undefined
-    };
+    return { start: start ? start.getTime() : undefined, end: undefined };
   };
 
   const loadData = async () => {

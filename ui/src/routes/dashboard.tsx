@@ -47,21 +47,45 @@ export default function Dashboard() {
   const [healthStatus, setHealthStatus] = useState<ProviderHealth[]>([]);
   const [timeRange, setTimeRange] = useState<TimeRange>('24h');
 
-  // 计算时间范围
+  // 计算时间范围，返回毫秒时间戳
   const getTimeParams = (range: TimeRange) => {
     const now = new Date();
     let start: Date | null = null;
-    
+
     switch (range) {
-      case '1h': start = new Date(now.getTime() - 3600000); break;
-      case '24h': start = new Date(now.getTime() - 86400000); break;
-      case '7d': start = new Date(now.getTime() - 7 * 86400000); break;
-      case '30d': start = new Date(now.getTime() - 30 * 86400000); break;
-      case 'all': start = null; break;
+      case '1h': {
+        const h = new Date(now.getTime() - 3600000);
+        h.setMinutes(0, 0, 0);
+        start = h;
+        break;
+      }
+      case '24h': {
+        // 24h：今天 8:00 到明天 8:00
+        const d = new Date(now);
+        d.setHours(8, 0, 0, 0);
+        // 如果现在还没到今天 8:00，起点是昨天 8:00
+        if (now.getHours() < 8) {
+          d.setDate(d.getDate() - 1);
+        }
+        start = d;
+        break;
+      }
+      case '7d': {
+        const d = new Date(now);
+        d.setDate(d.getDate() - 7);
+        d.setHours(0, 0, 0, 0);
+        start = d;
+        break;
+      }
+      case '30d':
+      case 'all': {
+        start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+        break;
+      }
     }
-    
+
     return {
-      start: start ? start.toISOString().replace('T', ' ').split('.')[0] : undefined,
+      start: start ? start.getTime() : undefined,
       end: undefined
     };
   };
@@ -121,36 +145,57 @@ export default function Dashboard() {
   const modelChartData = useMemo(() => {
     if (!recentLogs.length || !top5ModelNames.length) return [];
     
-    // 1. 确定时间窗口的绝对起点 (必须对齐所选的 TimeRange，而不是对齐数据)
+    // 1. 确定时间窗口的绝对起点（对齐自然时间边界）
     const now = new Date();
     let windowStartTime = now.getTime() - 3600000; // 默认 1H
     let bucketCount = 60; // 默认 1H 每分钟一个桶
 
     switch (timeRange) {
-      case '1h': 
-        windowStartTime = now.getTime() - 3600000; 
-        bucketCount = 60; 
+      case '1h':
+        // 1h：往前推 1 小时到整点，让第一条数据显示在 1/3 处
+        const oneHourAgo = new Date(now.getTime() - 3600000);
+        oneHourAgo.setMinutes(0, 0, 0);
+        windowStartTime = oneHourAgo.getTime();
+        bucketCount = 60;
         break;
-      case '24h': 
-        windowStartTime = now.getTime() - 86400000; 
+      case '24h':
+        // 24h：今天 8:00 到明天 8:00
+        const todayEight = new Date(now);
+        todayEight.setHours(8, 0, 0, 0);
+        // 如果现在还没到今天 8:00，起点是昨天 8:00
+        if (now.getHours() < 8) {
+          todayEight.setDate(todayEight.getDate() - 1);
+        }
+        windowStartTime = todayEight.getTime();
         bucketCount = 96; // 每 15 分钟一个桶，共 96 个
         break;
-      case '7d': 
-        windowStartTime = now.getTime() - 7 * 86400000; 
-        bucketCount = 84; // 每 2 小时一个桶
+      case '7d':
+        // 7d：7 天前的 00:00 到现在，X 轴显示 10 天让数据分布在左侧 70%
+        const sevenDaysAgo = new Date(now);
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        sevenDaysAgo.setHours(0, 0, 0, 0);
+        windowStartTime = sevenDaysAgo.getTime();
+        bucketCount = 10;
         break;
-      case '30d': 
-      case 'all': 
-        const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-        windowStartTime = now.getTime() - daysInMonth * 86400000; 
-        bucketCount = daysInMonth * 4; // 每 6 小时一个桶，动态适配
+      case '30d':
+      case 'all':
+        // 1M：本月 1 号 00:00 起，显示本月所有天数（包括未到的日期）
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+        windowStartTime = monthStart.getTime();
+        bucketCount = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
         break;
     }
 
     const minTime = windowStartTime;
-    const maxTime = now.getTime();
+    // 24h 固定从起点（今天/昨天 8:00）开始 24 小时，让 X 轴显示完整 8:00 ~ 8:00
+    let maxTime = now.getTime();
+    if (timeRange === '24h') {
+      maxTime = windowStartTime + 24 * 3600000;
+    }
     const timeSpan = maxTime - minTime;
-    const bucketDuration = Math.max(timeSpan / bucketCount, 1000); 
+    const isDayBucket = timeRange === '7d' || timeRange === '30d' || timeRange === 'all';
+    // 日期模式下每个桶严格 1 天；其它模式按 timeSpan 平均分
+    const bucketDuration = isDayBucket ? 86400000 : Math.max(timeSpan / bucketCount, 1000);
     
     // 智能选择时间格式
     let timeOptions: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit', hour12: false };
@@ -164,20 +209,23 @@ export default function Dashboard() {
         break;
       case '7d':
       case '30d':
-        timeOptions = { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false };
-        break;
       case 'all':
-        timeOptions = { year: '2-digit', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false };
+        // 7d/30d：每天一个桶，只显示日期
+        timeOptions = { month: '2-digit', day: '2-digit' };
         break;
     }
 
     const buckets: BucketData[] = [];
-    // 预留边缘空点，防止波形突然垂直切断
-    for (let i = 0; i <= bucketCount; i++) {
+    // 日期模式：严格 bucketCount 个桶（每天一个，不越界）
+    // 其它模式：预留边缘空点，防止波形突然垂直切断
+    const loopEnd = isDayBucket ? bucketCount - 1 : bucketCount;
+    for (let i = 0; i <= loopEnd; i++) {
         const bucketTime = minTime + i * bucketDuration;
         const bucketData: BucketData = {
             timestamp: bucketTime,
-            name: new Date(bucketTime).toLocaleTimeString([], timeOptions),
+            name: isDayBucket
+              ? new Date(bucketTime).toLocaleDateString([], { month: '2-digit', day: '2-digit' })
+              : new Date(bucketTime).toLocaleTimeString([], timeOptions),
             displayTime: new Date(bucketTime).toLocaleString(),
         };
         top5ModelNames.forEach(m => bucketData[m] = 0);
