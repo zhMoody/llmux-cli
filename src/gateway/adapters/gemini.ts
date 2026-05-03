@@ -94,23 +94,36 @@ export class GeminiAdapter implements Adapter {
       } else {
         const parts: any[] = [];
         if (Array.isArray(msg.content)) {
-          for (const part of msg.content) {
-            if ((part as any).type === "text") {
-              parts.push({ text: (part as any).text });
-            } else if ((part as any).type === "image_url") {
-              // 处理多模态（如果以后有需要）
-              const url = (part as any).image_url?.url;
-              if (url && url.startsWith("data:")) {
+          for (const part of msg.content as any[]) {
+            if (part.type === "text") {
+              parts.push({ text: part.text });
+            } else if (part.type === "image_url") {
+              const url = part.image_url?.url;
+              if (url?.startsWith("data:")) {
                 const [header, data] = url.split(",");
                 const mimeType = header.match(/:(.*?);/)?.[1] || "image/jpeg";
-                parts.push({
-                  inline_data: {
-                    mime_type: mimeType,
-                    data: data
-                  }
-                });
+                parts.push({ inline_data: { mime_type: mimeType, data } });
+              } else if (url) {
+                parts.push({ file_data: { mime_type: "image/jpeg", file_uri: url } });
               }
+            } else if (part.type === "document") {
+              if (part.source?.type === "base64") {
+                parts.push({ inline_data: { mime_type: part.source.media_type || "application/pdf", data: part.source.data } });
+              } else if (part.source?.type === "url") {
+                parts.push({ file_data: { mime_type: "application/pdf", file_uri: part.source.url } });
+              }
+            } else if (part.type === "input_audio") {
+              parts.push({ inline_data: { mime_type: `audio/${part.input_audio.format}`, data: part.input_audio.data } });
+            } else if (part.type === "tool_use") {
+              parts.push({ functionCall: { name: part.name, args: part.input } });
+            } else if (part.type === "tool_result") {
+              parts.push({ functionResponse: { name: part.tool_use_id, response: { content: part.content } } });
+            } else if (part.type === "thinking") {
+              parts.push({ thought: true, text: part.thinking });
+            } else if (part.type === "refusal") {
+              parts.push({ text: part.refusal });
             }
+            // file: Gemini 暂不支持 OpenAI file_id，跳过
           }
         } else {
           parts.push({ text: msg.content || "" });

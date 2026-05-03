@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS accounts (
 CREATE TABLE IF NOT EXISTS providers (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
-  type TEXT NOT NULL, -- openai, anthropic, gemini, custom
+  type TEXT NOT NULL, -- openai, anthropic, gemini, custom, custom-anthropic
   base_url TEXT
 );
 
@@ -75,4 +75,5 @@ export const SEED_DATA = `
 INSERT OR IGNORE INTO providers (id, name, type) VALUES ('openai', 'OpenAI', 'openai');
 INSERT OR IGNORE INTO providers (id, name, type) VALUES ('anthropic', 'Anthropic', 'anthropic');
 INSERT OR IGNORE INTO providers (id, name, type) VALUES ('gemini', 'Google Gemini', 'gemini');
+INSERT OR IGNORE INTO providers (id, name, type) VALUES ('custom-anthropic', 'Custom (Anthropic Compatible)', 'custom-anthropic');
 `;

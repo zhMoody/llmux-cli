@@ -243,6 +243,7 @@ export default function Accounts() {
                 className="w-full px-4 py-2 bg-muted/50 border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all font-semibold disabled:opacity-50"
               >
                 <option value="custom">{t('accounts.custom')}</option>
+                <option value="custom-anthropic">{t('accounts.customAnthropic')}</option>
                 <option value="openai">OpenAI</option>
                 <option value="anthropic">Anthropic</option>
                 <option value="gemini">Google Gemini</option>
@@ -258,7 +259,7 @@ export default function Accounts() {
                 className="w-full px-4 py-2 bg-muted/50 border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all font-mono disabled:opacity-50"
               />
             </div>
-            {formData.provider_id === 'custom' && (
+            {(formData.provider_id === 'custom' || formData.provider_id === 'custom-anthropic') && (
               <div className="space-y-1.5 animate-in slide-in-from-top-1">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-bold text-muted-foreground uppercase">{t('accounts.baseUrl')}</label>
@@ -337,6 +338,7 @@ export default function Accounts() {
                 className="w-full px-4 py-2 bg-muted/50 border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all font-semibold disabled:opacity-50"
               >
                 <option value="custom">{t('accounts.custom')}</option>
+                <option value="custom-anthropic">{t('accounts.customAnthropic')}</option>
                 <option value="openai">OpenAI</option>
                 <option value="anthropic">Anthropic</option>
                 <option value="gemini">Google Gemini</option>
@@ -355,7 +357,7 @@ export default function Accounts() {
                 className="w-full px-4 py-2 bg-muted/50 border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all font-mono disabled:opacity-50"
               />
             </div>
-            {editData.provider_id === 'custom' && (
+            {(editData.provider_id === 'custom' || editData.provider_id === 'custom-anthropic') && (
               <div className="space-y-1.5 animate-in slide-in-from-top-1">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-bold text-muted-foreground uppercase">Base URL</label>

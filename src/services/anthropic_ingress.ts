@@ -1,5 +1,5 @@
 import { dispatcher } from "./dispatcher.js";
-import type { ChatRequest, ChatMessage } from "../gateway/types.js";
+import type { ChatRequest, ChatMessage, ContentPart } from "../gateway/types.js";
 
 /**
  * Anthropic 入口处理器 (Anthropic Ingress)
@@ -84,7 +84,7 @@ export class AnthropicIngressService {
         });
       } else if (Array.isArray(msg.content)) {
         // 处理 Anthropic 的内容块数组 (包含 text, image, tool_use, tool_result)
-        const openAIParts: any[] = [];
+        const openAIParts: ContentPart[] = [];
         const toolCalls: any[] = [];
 
         let reasoningContent: string | undefined;
@@ -117,17 +117,17 @@ export class AnthropicIngressService {
           } else if (block.type === "tool_result") {
             // Anthropic 的 tool_result 对应 OpenAI 的 tool 角色消息
             result.push({
-              role: "tool",
+              role: "tool" as const,
               content: typeof block.content === "string" ? block.content : JSON.stringify(block.content),
               tool_call_id: block.tool_use_id,
-            } as any);
+            });
           }
         }
 
         if (openAIParts.length > 0 || toolCalls.length > 0) {
           // 如果只有一个文本块，则打平为字符串以获得最佳兼容性
           // 如果有多个块或包含图片，则保留数组格式
-          let finalContent: any = null;
+          let finalContent: string | ContentPart[] | null = null;
           if (openAIParts.length === 1 && openAIParts[0].type === "text") {
             finalContent = openAIParts[0].text;
           } else if (openAIParts.length > 0) {
@@ -136,10 +136,11 @@ export class AnthropicIngressService {
 
           result.push({
             role: msg.role,
-            content: finalContent,
+            content: finalContent ?? "",
             tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
-            ...(reasoningContent ? { reasoning_content: reasoningContent, reasoning_signature: reasoningSignature } : {}),
-          } as any);
+            reasoning_content: reasoningContent,
+            reasoning_signature: reasoningSignature,
+          });
         }
       }
     }

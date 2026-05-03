@@ -111,6 +111,7 @@ export class Dispatcher {
             response = await openaiAdapter.handleChat(request, account);
             break;
           case "anthropic":
+          case "custom-anthropic":
             response = await anthropicAdapter.handleChat(request, account);
             break;
           case "gemini":
@@ -313,7 +314,7 @@ export class Dispatcher {
         const providerType = (db.query("SELECT type FROM providers WHERE id = ?").get(acc.provider_id) as any)?.type || acc.provider_id;
 
         if (providerType === "openai") models = await openaiAdapter.listModels(acc);
-        else if (providerType === "anthropic") models = await anthropicAdapter.listModels(acc);
+        else if (providerType === "anthropic" || providerType === "custom-anthropic") models = await anthropicAdapter.listModels(acc);
         else if (providerType === "gemini") models = await geminiAdapter.listModels(acc);
         else if (["custom", "poe", "claude", "qwen"].includes(providerType)) models = await customAdapter.listModels(acc);
         

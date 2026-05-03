@@ -1,4 +1,4 @@
-import type { Account, Adapter, ChatMessage, ChatRequest } from "../types.js";
+import type { Account, Adapter, ChatMessage, ChatRequest, ContentPart } from "../types.js";
 
 /**
  * Anthropic 适配器
@@ -69,7 +69,7 @@ export class AnthropicAdapter implements Adapter {
    */
   private transformMessages(messages: ChatMessage[]) {
     let system = "";
-    const filteredMessages: { role: "user" | "assistant"; content: string | any[] }[] = [];
+    const filteredMessages: { role: "user" | "assistant"; content: string | ContentPart[] | any[] }[] = [];
 
     for (const msg of messages) {
       if (msg.role === "system") {
@@ -78,35 +78,52 @@ export class AnthropicAdapter implements Adapter {
           : msg.content;
         system += (system ? "\n" : "") + text;
       } else {
-        // Claude 角色仅支持 user 和 assistant
-        // 转换 content 格式，处理 OpenAI -> Anthropic 的差异
-        let content: string | any[] = msg.content;
+        let content: string | ContentPart[] | any[] = msg.content;
         if (Array.isArray(msg.content)) {
-          content = msg.content.map(part => {
+          content = msg.content.map((part: ContentPart) => {
             if (part.type === "text") return { type: "text", text: part.text };
             if (part.type === "image_url") {
               const url = part.image_url?.url;
               if (url?.startsWith("data:")) {
                 const [header, data] = url.split(",");
                 const mimeType = header.match(/:(.*?);/)?.[1] || "image/jpeg";
-                return {
-                  type: "image",
-                  source: {
-                    type: "base64",
-                    media_type: mimeType,
-                    data: data
-                  }
-                };
+                return { type: "image", source: { type: "base64", media_type: mimeType, data } };
               }
+              return { type: "image", source: { type: "url", url } };
+            }
+            if (part.type === "document") {
+              return { type: "document", source: part.source, title: part.title, citations: part.citations };
+            }
+            if (part.type === "file") {
+              // Anthropic 暂不支持 OpenAI file_id，降级为跳过
+              return null;
+            }
+            if (part.type === "input_audio") {
+              // Anthropic 暂不支持音频输入，降级为跳过
+              return null;
+            }
+            if (part.type === "tool_use") {
+              return { type: "tool_use", id: part.id, name: part.name, input: part.input };
+            }
+            if (part.type === "tool_result") {
+              return {
+                type: "tool_result",
+                tool_use_id: part.tool_use_id,
+                content: part.content,
+                is_error: part.is_error,
+              };
+            }
+            if (part.type === "refusal") {
+              // Anthropic 没有 refusal block，转为 text
+              return { type: "text", text: part.refusal };
             }
             return part;
-          });
+          }).filter(Boolean);
         }
 
         // Anthropic extended thinking: reasoning_content must be passed back as a thinking block
-        const msgAny = msg as any;
-        if (msg.role === "assistant" && msgAny.reasoning_content) {
-          const thinkingBlock = { type: "thinking", thinking: msgAny.reasoning_content, signature: msgAny.reasoning_signature || "" };
+        if (msg.role === "assistant" && msg.reasoning_content) {
+          const thinkingBlock = { type: "thinking", thinking: msg.reasoning_content, signature: msg.reasoning_signature || "" };
           if (Array.isArray(content)) {
             content = [thinkingBlock, ...content];
           } else if (typeof content === "string" && content) {

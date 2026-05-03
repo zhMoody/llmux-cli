@@ -199,6 +199,7 @@
     "optional": "选填",
     "editAccount": "编辑账户",
     "custom": "自定义 (兼容 OpenAI)",
+    "customAnthropic": "自定义 (兼容 Anthropic)",
     "copied": "已复制！",
     "copyScript": "复制脚本",
     "validating": "验证中...",

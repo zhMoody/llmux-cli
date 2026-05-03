@@ -194,6 +194,7 @@
     "optional": "Optional",
     "editAccount": "Edit Account",
     "custom": "Custom (OpenAI Compatible)",
+    "customAnthropic": "Custom (Anthropic Compatible)",
     "copied": "Copied!",
     "copyScript": "Copy Script",
     "validating": "Validating...",
