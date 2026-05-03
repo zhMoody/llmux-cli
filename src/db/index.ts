@@ -50,6 +50,14 @@ export function initDb() {
     }
   }
 
+  try {
+    db.run("ALTER TABLE accounts ADD COLUMN anthropic_base_url TEXT;");
+  } catch (e: any) {
+    if (!e.message.includes("duplicate column name")) {
+      console.error("[DB Migration Error: accounts anthropic_base_url]", e.message);
+    }
+  }
+
   console.log(`[DB] Database initialized at: ${DATABASE_PATH}`);
   migrateLegacyKeys(db);
 }

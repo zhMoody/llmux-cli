@@ -125,6 +125,15 @@ export function startGateway() {
       }
 
       if (req.method === "POST" && normalizedPath === "/v1/messages") {
+        const body = await req.clone().json() as { model?: string };
+        if (body.model) {
+          const { resolveProxyRoute } = await import("../services/proxy/router.js");
+          const { executePassthrough } = await import("../services/proxy/passthrough.js");
+          const ctx = resolveProxyRoute(body.model, "anthropic");
+          if (ctx?.decision === "passthrough") {
+            return executePassthrough(req, ctx.account, ctx.anthropicBaseUrl, ctx.resolvedModel);
+          }
+        }
         return anthropicIngress.handleMessages(req);
       }
 

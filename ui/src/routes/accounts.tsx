@@ -34,8 +34,10 @@ export default function Accounts() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<any>(null);
-  const [formData, setFormData] = useState({ alias: '', provider_id: 'custom', api_key: '', base_url: '' });
-  const [editData, setEditData] = useState({ alias: '', provider_id: '', api_key: '', base_url: '', notes: '' });
+  const [formData, setFormData] = useState({ alias: '', provider_id: 'custom', api_key: '', base_url: '', anthropic_base_url: '' });
+  const [formSupportsAnthropic, setFormSupportsAnthropic] = useState(false);
+  const [editData, setEditData] = useState({ alias: '', provider_id: '', api_key: '', base_url: '', anthropic_base_url: '', notes: '' });
+  const [editSupportsAnthropic, setEditSupportsAnthropic] = useState(false);
   const [accountToDelete, setAccountToDelete] = useState<{id: number, name: string} | null>(null);
   const [isValidating, setIsValidating] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -51,7 +53,8 @@ export default function Accounts() {
     try {
       await addAccount(formData);
       setIsModalOpen(false);
-      setFormData({ alias: '', provider_id: 'custom', api_key: '', base_url: '' });
+      setFormData({ alias: '', provider_id: 'custom', api_key: '', base_url: '', anthropic_base_url: '' });
+      setFormSupportsAnthropic(false);
     } catch (err: any) {
       setValidationError(err.message || "Validation failed");
     } finally {
@@ -62,7 +65,8 @@ export default function Accounts() {
 
   const openEdit = (acc: any) => {
     setEditingAccount(acc);
-    setEditData({ alias: acc.alias, provider_id: acc.provider_id, api_key: '', base_url: acc.base_url || '', notes: acc.notes || '' });
+    setEditData({ alias: acc.alias, provider_id: acc.provider_id, api_key: '', base_url: acc.base_url || '', anthropic_base_url: acc.anthropic_base_url || '', notes: acc.notes || '' });
+    setEditSupportsAnthropic(!!acc.anthropic_base_url);
     setIsEditOpen(true);
   };
 
@@ -243,7 +247,7 @@ export default function Accounts() {
                 className="w-full px-4 py-2 bg-muted/50 border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all font-semibold disabled:opacity-50"
               >
                 <option value="custom">{t('accounts.custom')}</option>
-                <option value="custom-anthropic">{t('accounts.customAnthropic')}</option>
+                <option value="custom-anthropic" hidden>{t('accounts.customAnthropic')}</option>
                 <option value="openai">OpenAI</option>
                 <option value="anthropic">Anthropic</option>
                 <option value="gemini">Google Gemini</option>
@@ -261,15 +265,39 @@ export default function Accounts() {
             </div>
             {(formData.provider_id === 'custom' || formData.provider_id === 'custom-anthropic') && (
               <div className="space-y-1.5 animate-in slide-in-from-top-1">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-muted-foreground uppercase">{t('accounts.baseUrl')}</label>
-                  <span className="text-[10px] text-muted-foreground opacity-50 font-medium italic">{t('accounts.optional')}</span>
-                </div>
+                <label className="text-xs font-bold text-muted-foreground uppercase">{t('accounts.baseUrl')}</label>
                 <input
                   type="text" value={formData.base_url}
                   disabled={isValidating}
                   onChange={e => setFormData({...formData, base_url: e.target.value})}
                   placeholder="https://api.openai.com/v1"
+                  className="w-full px-4 py-2 bg-muted/50 border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all font-mono disabled:opacity-50"
+                />
+              </div>
+            )}
+            <div className="space-y-1.5">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={formSupportsAnthropic}
+                  disabled={isValidating}
+                  onChange={e => {
+                    setFormSupportsAnthropic(e.target.checked);
+                    if (!e.target.checked) setFormData({...formData, anthropic_base_url: ''});
+                  }}
+                  className="w-4 h-4 rounded accent-primary"
+                />
+                <span className="text-xs font-bold text-muted-foreground uppercase">{t('accounts.supportsAnthropic')}</span>
+              </label>
+            </div>
+            {formSupportsAnthropic && (
+              <div className="space-y-1.5 animate-in slide-in-from-top-1">
+                <label className="text-xs font-bold text-muted-foreground uppercase">{t('accounts.anthropicBaseUrl')}</label>
+                <input
+                  type="text" value={formData.anthropic_base_url}
+                  disabled={isValidating}
+                  onChange={e => setFormData({...formData, anthropic_base_url: e.target.value})}
+                  placeholder={t('accounts.anthropicBaseUrlPlaceholder')}
                   className="w-full px-4 py-2 bg-muted/50 border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all font-mono disabled:opacity-50"
                 />
               </div>
@@ -338,7 +366,7 @@ export default function Accounts() {
                 className="w-full px-4 py-2 bg-muted/50 border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all font-semibold disabled:opacity-50"
               >
                 <option value="custom">{t('accounts.custom')}</option>
-                <option value="custom-anthropic">{t('accounts.customAnthropic')}</option>
+                <option value="custom-anthropic" hidden>{t('accounts.customAnthropic')}</option>
                 <option value="openai">OpenAI</option>
                 <option value="anthropic">Anthropic</option>
                 <option value="gemini">Google Gemini</option>
@@ -359,10 +387,7 @@ export default function Accounts() {
             </div>
             {(editData.provider_id === 'custom' || editData.provider_id === 'custom-anthropic') && (
               <div className="space-y-1.5 animate-in slide-in-from-top-1">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-muted-foreground uppercase">Base URL</label>
-                  <span className="text-[10px] text-muted-foreground opacity-50 italic">{t('accounts.optional')}</span>
-                </div>
+                <label className="text-xs font-bold text-muted-foreground uppercase">{t('accounts.baseUrl')}</label>
                 <input
                   type="text" value={editData.base_url}
                   disabled={isValidating}
@@ -372,9 +397,36 @@ export default function Accounts() {
                 />
               </div>
             )}
+            <div className="space-y-1.5">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={editSupportsAnthropic}
+                  disabled={isValidating}
+                  onChange={e => {
+                    setEditSupportsAnthropic(e.target.checked);
+                    if (!e.target.checked) setEditData({...editData, anthropic_base_url: ''});
+                  }}
+                  className="w-4 h-4 rounded accent-primary"
+                />
+                <span className="text-xs font-bold text-muted-foreground uppercase">{t('accounts.supportsAnthropic')}</span>
+              </label>
+            </div>
+            {editSupportsAnthropic && (
+              <div className="space-y-1.5 animate-in slide-in-from-top-1">
+                <label className="text-xs font-bold text-muted-foreground uppercase">{t('accounts.anthropicBaseUrl')}</label>
+                <input
+                  type="text" value={editData.anthropic_base_url}
+                  disabled={isValidating}
+                  onChange={e => setEditData({...editData, anthropic_base_url: e.target.value})}
+                  placeholder={t('accounts.anthropicBaseUrlPlaceholder')}
+                  className="w-full px-4 py-2 bg-muted/50 border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all font-mono disabled:opacity-50"
+                />
+              </div>
+            )}
             <div className="pt-4 flex gap-3">
-               <button 
-                 type="button" 
+               <button
+                 type="button"
                  disabled={isValidating}
                  onClick={() => { setIsEditOpen(false); setEditingAccount(null); }} 
                  className="flex-1 px-4 py-2 text-sm font-bold border border-border rounded-lg hover:bg-muted transition-all disabled:opacity-50"

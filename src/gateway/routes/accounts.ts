@@ -9,7 +9,7 @@ import { customAdapter } from "../adapters/custom.js";
  * 获取所有账户列表 (脱敏处理)
  */
 export async function listAccounts() {
-  const stmt = db.query("SELECT id, alias, provider_id, base_url, is_active, weight, notes, created_at FROM accounts ORDER BY created_at DESC");
+  const stmt = db.query("SELECT id, alias, provider_id, base_url, anthropic_base_url, is_active, weight, notes, created_at FROM accounts ORDER BY created_at DESC");
   const accounts = stmt.all();
   return Response.json(accounts);
 }
@@ -20,7 +20,7 @@ export async function listAccounts() {
 export async function createAccount(req: Request) {
   try {
     const body = await req.json() as any;
-    const { alias, provider_id, api_key, base_url, weight, notes } = body;
+    const { alias, provider_id, api_key, base_url, anthropic_base_url, weight, notes } = body;
 
     if (!alias || !provider_id || !api_key) {
       return Response.json({ error: "Missing required fields: alias, provider_id, api_key" }, { status: 400 });
@@ -52,11 +52,11 @@ export async function createAccount(req: Request) {
     // --- 校验结束 ---
 
     const stmt = db.prepare(`
-      INSERT INTO accounts (alias, provider_id, api_key, base_url, weight, notes)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO accounts (alias, provider_id, api_key, base_url, anthropic_base_url, weight, notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
-    
-    stmt.run(alias, provider_id, encryptedKey, base_url || null, weight || 1, notes || null);
+
+    stmt.run(alias, provider_id, encryptedKey, base_url || null, anthropic_base_url || null, weight || 1, notes || null);
 
     return Response.json({ 
       success: true, 
@@ -74,7 +74,7 @@ export async function createAccount(req: Request) {
 export async function updateAccount(id: string, req: Request) {
   try {
     const body = await req.json() as any;
-    const { alias, provider_id, api_key, base_url, is_active, weight, notes } = body;
+    const { alias, provider_id, api_key, base_url, anthropic_base_url, is_active, weight, notes } = body;
 
     // 1. 先检查账户是否存在
     const existing = db.query("SELECT * FROM accounts WHERE id = ?").get(id) as any;
@@ -121,8 +121,8 @@ export async function updateAccount(id: string, req: Request) {
     // --- 校验结束 ---
 
     const stmt = db.prepare(`
-      UPDATE accounts 
-      SET alias = ?, provider_id = ?, api_key = ?, base_url = ?, is_active = ?, weight = ?, notes = ?
+      UPDATE accounts
+      SET alias = ?, provider_id = ?, api_key = ?, base_url = ?, anthropic_base_url = ?, is_active = ?, weight = ?, notes = ?
       WHERE id = ?
     `);
 
@@ -131,6 +131,7 @@ export async function updateAccount(id: string, req: Request) {
       provider_id || existing.provider_id,
       updatedKey,
       base_url !== undefined ? base_url : existing.base_url,
+      anthropic_base_url !== undefined ? anthropic_base_url : existing.anthropic_base_url,
       is_active !== undefined ? is_active : existing.is_active,
       weight !== undefined ? weight : existing.weight,
       notes !== undefined ? notes : existing.notes,

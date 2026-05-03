@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS accounts (
   provider_id TEXT NOT NULL,
   api_key TEXT NOT NULL, -- 加密存储
   base_url TEXT,
+  anthropic_base_url TEXT, -- Anthropic 兼容端点，非空时走透传路径
   is_active INTEGER DEFAULT 1,
   weight INTEGER DEFAULT 1,
   notes TEXT,

@@ -138,6 +138,8 @@ export interface Account {
   provider_id: string;
   api_key: string;
   base_url?: string;
+  /** Anthropic 兼容端点，非空时 /v1/messages 走透传路径 */
+  anthropic_base_url?: string;
   is_active: number;
   weight: number;
 }
