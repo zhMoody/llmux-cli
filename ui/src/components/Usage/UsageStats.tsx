@@ -70,14 +70,20 @@ export const UsageStats = ({ t, accountUtilization, failoverStats, summary, form
           </div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-1 text-xs font-bold text-muted-foreground">
-              <div className="w-1.5 h-1.5 rounded-full bg-primary/40" /> 
-              {formatTokens(summary?.totalInput || 0)} <span className="opacity-70">In</span>
+              <div className="w-1.5 h-1.5 rounded-full bg-primary/40" />
+              {formatTokens(summary?.totalInput || 0)} <span className="opacity-70">{t('usage.input')}</span>
             </div>
             <div className="flex items-center gap-1 text-xs font-bold text-muted-foreground">
-              <div className="w-1.5 h-1.5 rounded-full bg-primary" /> 
-              {formatTokens(summary?.totalOutput || 0)} <span className="opacity-70">Out</span>
+              <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+              {formatTokens(summary?.totalOutput || 0)} <span className="opacity-70">{t('usage.output')}</span>
             </div>
           </div>
+          {(summary?.totalCacheRead || 0) > 0 && (
+            <div className="flex items-center gap-1 text-xs font-bold text-amber-500/80">
+              <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+              {formatTokens(summary?.totalCacheRead || 0)} <span className="opacity-70">{t('usage.cacheHit')}</span>
+            </div>
+          )}
         </div>
       </div>
 

@@ -90,6 +90,22 @@ export function initDb() {
     console.error("[DB Migration Error: usage_logs timestamp]", e.message);
   }
 
+  try {
+    db.run("ALTER TABLE usage_logs ADD COLUMN cache_read_input_tokens INTEGER DEFAULT 0;");
+  } catch (e: any) {
+    if (!e.message.includes("duplicate column name")) {
+      console.error("[DB Migration Error: usage_logs cache_read_input_tokens]", e.message);
+    }
+  }
+
+  try {
+    db.run("ALTER TABLE usage_logs ADD COLUMN cache_creation_input_tokens INTEGER DEFAULT 0;");
+  } catch (e: any) {
+    if (!e.message.includes("duplicate column name")) {
+      console.error("[DB Migration Error: usage_logs cache_creation_input_tokens]", e.message);
+    }
+  }
+
   console.log(`[DB] Database initialized at: ${DATABASE_PATH}`);
   migrateLegacyKeys(db);
 }

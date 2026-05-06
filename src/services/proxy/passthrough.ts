@@ -158,15 +158,20 @@ function wrapJsonWithUsage(
     .clone()
     .json()
     .then((data: any) => {
-      const inputTokens = data?.usage?.input_tokens ?? 0;
-      const outputTokens = data?.usage?.output_tokens ?? 0;
-      console.log(`[Proxy][Usage][JSON] account=${account.id} model=${resolvedModel} input=${inputTokens} output=${outputTokens}`);
+      const u = data?.usage;
+      const inputTokens = typeof u?.input_tokens === "number" ? u.input_tokens : 0;
+      const outputTokens = u?.output_tokens ?? 0;
+      const cacheRead = u?.cache_read_input_tokens ?? 0;
+      const cacheCreate = u?.cache_creation_input_tokens ?? 0;
+      console.log(`[Proxy][Usage][JSON] account=${account.id} model=${resolvedModel} input=${inputTokens} cacheRead=${cacheRead} cacheCreate=${cacheCreate} output=${outputTokens}`);
       usageService.logUsage({
         accountId: account.id,
         providerId: account.provider_id,
         model: resolvedModel,
         inputTokens,
         outputTokens,
+        cacheReadInputTokens: cacheRead,
+        cacheCreationInputTokens: cacheCreate,
         latencyMs: Date.now() - startedAt,
         success: true,
       });
@@ -192,6 +197,8 @@ function wrapStreamWithUsage(
 ): Response {
   let inputTokens = 0;
   let outputTokens = 0;
+  let cacheRead = 0;
+  let cacheCreate = 0;
   let buffer = "";
   const decoder = new TextDecoder();
 
@@ -210,24 +217,37 @@ function wrapStreamWithUsage(
         if (!payload || payload === "[DONE]") continue;
         try {
           const evt = JSON.parse(payload);
-          if (evt.type === "message_start" && evt.message?.usage) {
-            inputTokens = evt.message.usage.input_tokens ?? inputTokens;
-            outputTokens = evt.message.usage.output_tokens ?? outputTokens;
-            console.log(`[Proxy][Usage][SSE message_start] input=${inputTokens} output=${outputTokens}`);
-          } else if (evt.type === "message_delta" && evt.usage) {
-            outputTokens = evt.usage.output_tokens ?? outputTokens;
+          // MiMo 等 Anthropic 兼容端点：message_start.usage 全是 0，
+          // 真实 input/output_tokens 都落在最后一条 message_delta.usage。
+          // 用 max 合并，各字段独立取最大值，避免被 0 覆盖。
+          const u =
+            evt.type === "message_start" ? evt.message?.usage : evt.usage;
+          if (u) {
+            if (typeof u.input_tokens === "number" && u.input_tokens > inputTokens)
+              inputTokens = u.input_tokens;
+            if (typeof u.output_tokens === "number" && u.output_tokens > outputTokens)
+              outputTokens = u.output_tokens;
+            if (typeof u.cache_read_input_tokens === "number" && u.cache_read_input_tokens > cacheRead)
+              cacheRead = u.cache_read_input_tokens;
+            if (typeof u.cache_creation_input_tokens === "number" && u.cache_creation_input_tokens > cacheCreate)
+              cacheCreate = u.cache_creation_input_tokens;
+            if (evt.type === "message_start") {
+              console.log(`[Proxy][Usage][SSE message_start] input=${inputTokens} cacheRead=${cacheRead} cacheCreate=${cacheCreate} output=${outputTokens}`);
+            }
           }
         } catch {}
       }
     },
     flush() {
-      console.log(`[Proxy][Usage][SSE flush] account=${account.id} model=${resolvedModel} input=${inputTokens} output=${outputTokens}`);
+      console.log(`[Proxy][Usage][SSE flush] account=${account.id} model=${resolvedModel} input=${inputTokens} cacheRead=${cacheRead} cacheCreate=${cacheCreate} output=${outputTokens}`);
       usageService.logUsage({
         accountId: account.id,
         providerId: account.provider_id,
         model: resolvedModel,
         inputTokens,
         outputTokens,
+        cacheReadInputTokens: cacheRead,
+        cacheCreationInputTokens: cacheCreate,
         latencyMs: Date.now() - startedAt,
         success: true,
       });

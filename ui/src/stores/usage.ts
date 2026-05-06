@@ -3,6 +3,8 @@ import { create } from 'zustand';
 export interface UsageSummary {
   totalInput: number;
   totalOutput: number;
+  totalCacheRead: number;
+  totalCacheCreate: number;
   avgLatency: number;
   totalRequests: number;
   successRequests: number;
@@ -22,6 +24,8 @@ export interface UsageLog {
   model: string;
   input_tokens: number;
   output_tokens: number;
+  cache_read_input_tokens: number;
+  cache_creation_input_tokens: number;
   latency_ms: number;
   success: number;
   error_message: string | null;

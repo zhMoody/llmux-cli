@@ -84,6 +84,8 @@
     "downloadCsv": "导出数据 (CSV)",
     "input": "输入",
     "output": "输出",
+    "cacheHit": "缓存命中",
+    "cacheCreate": "缓存写入",
     "day": "日",
     "month": "月",
     "noData": "暂无数据记录",

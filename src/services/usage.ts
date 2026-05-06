@@ -6,6 +6,8 @@ export interface UsageLogParams {
   model: string;
   inputTokens: number;
   outputTokens: number;
+  cacheReadInputTokens?: number;
+  cacheCreationInputTokens?: number;
   latencyMs: number;
   success: boolean;
   errorMessage?: string;
@@ -46,8 +48,10 @@ export class UsageService {
     try {
       db.run(`
         INSERT INTO usage_logs (
-          timestamp, account_id, provider_id, model, input_tokens, output_tokens, latency_ms, success, error_message, is_test
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          timestamp, account_id, provider_id, model, input_tokens, output_tokens,
+          cache_read_input_tokens, cache_creation_input_tokens,
+          latency_ms, success, error_message, is_test
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [
         Date.now(),
         params.accountId,
@@ -55,6 +59,8 @@ export class UsageService {
         params.model,
         params.inputTokens,
         params.outputTokens,
+        params.cacheReadInputTokens ?? 0,
+        params.cacheCreationInputTokens ?? 0,
         params.latencyMs,
         params.success ? 1 : 0,
         params.errorMessage || null,
@@ -93,6 +99,8 @@ export class UsageService {
       `SELECT
         IFNULL(SUM(input_tokens), 0) as totalInput,
         IFNULL(SUM(output_tokens), 0) as totalOutput,
+        IFNULL(SUM(cache_read_input_tokens), 0) as totalCacheRead,
+        IFNULL(SUM(cache_creation_input_tokens), 0) as totalCacheCreate,
         IFNULL(AVG(latency_ms), 0) as avgLatency,
         COUNT(*) as totalRequests,
         IFNULL(SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END), 0) as successRequests

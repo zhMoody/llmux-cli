@@ -79,6 +79,8 @@
     "downloadCsv": "Export Data (CSV)",
     "input": "Input",
     "output": "Output",
+    "cacheHit": "Cache Hit",
+    "cacheCreate": "Cache Write",
     "day": "Day",
     "month": "Month",
     "noData": "No data records found",
