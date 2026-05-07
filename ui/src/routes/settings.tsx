@@ -1,16 +1,16 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
 import { useSettingsStore } from '../stores/settings';
-import { 
-  Settings as SettingsIcon, 
-  Shield, 
-  Terminal, 
+import {
+  Settings as SettingsIcon,
+  Shield,
+  Terminal,
   Monitor,
-  Save,
-  RotateCcw,
+  RefreshCw,
   Loader2,
-  CheckCircle2
+  CheckCircle2,
+  Download,
+  Upload
 } from 'lucide-react';
 import { ConfirmDialog } from '../components/Modal';
 
@@ -46,14 +46,17 @@ const SettingItem = ({ label, description, children }: { label: string, descript
 
 export default function Settings() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
-  const { config, isLoading, fetchSettings, updateSettings } = useSettingsStore();
+  const { config, fetchSettings, updateSettings } = useSettingsStore();
   const [localConfig, setLocalConfig] = useState<Record<string, any>>({});
   const [showSaved, setShowSaved] = useState(false);
   const [showRestartModal, setShowRestartModal] = useState(false);
   const [errorModal, setErrorModal] = useState<{title: string, message: string} | null>(null);
   const [isPurging, setIsPurging] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importResult, setImportResult] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchSettings();
@@ -96,8 +99,45 @@ export default function Settings() {
     }
   };
 
-  const handlePurge = async () => {
-    setIsConfirmOpen(false);
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      const res = await fetch('/api/export');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `llmux-config-${Date.now()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsImporting(true);
+    setImportResult(null);
+    try {
+      const text = await file.text();
+      const json = JSON.parse(text);
+      const res = await fetch('/api/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(json) });
+      const data = await res.json();
+      if (data.success) {
+        const { accounts, aliases, keys } = data.imported;
+        setImportResult(t('settings.importSuccess', { accounts, aliases, keys }));
+      }
+    } catch (err) {
+      console.error('Import failed:', err);
+    } finally {
+      setIsImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handlePurge = async () => {    setIsConfirmOpen(false);
     setIsPurging(true);
     try {
       const res = await fetch('/api/settings/reset', { method: 'POST' });
@@ -137,28 +177,20 @@ export default function Settings() {
         <SettingGroup title={t('settings.infra')} icon={Terminal}>
            <SettingItem label={t('settings.port')} description={t('settings.portDesc')}>
              <div className="relative flex items-center gap-2">
-                <input 
-                  type="text" 
-                  value={localConfig.port || '25975'} 
+                <input
+                  type="text"
+                  value={localConfig.port || '25975'}
                   onChange={e => setLocalConfig({...localConfig, port: e.target.value})}
                   onKeyDown={e => e.key === 'Enter' && handleAutoSave(localConfig, true)}
                   className="bg-muted/50 border border-border rounded-lg px-3 py-1.5 text-xs font-bold w-24 text-center outline-none focus:ring-1 focus:ring-primary/20 transition-all"
                 />
-                <button 
+                <button
                   onClick={() => handleAutoSave(localConfig, true)}
                   className="p-1.5 bg-primary/10 text-primary rounded-md hover:bg-primary hover:text-primary-foreground transition-all duration-200"
                   title={t('common.save')}
                 >
                   <CheckCircle2 size={14} />
                 </button>
-             </div>
-           </SettingItem>
-           <SettingItem label={t('settings.autoUpdate')} description={t('settings.autoUpdateDesc')}>
-             <div 
-                onClick={() => handleAutoSave({...localConfig, autoUpdate: !localConfig.autoUpdate})}
-                className={cn("w-10 h-5 rounded-full relative cursor-pointer transition-colors px-1 flex items-center", localConfig.autoUpdate ? 'bg-primary' : 'bg-muted')}
-              >
-                <div className={cn("w-3 h-3 bg-white rounded-full transition-all", localConfig.autoUpdate ? 'translate-x-5' : 'translate-x-0')} />
              </div>
            </SettingItem>
         </SettingGroup>
@@ -193,6 +225,38 @@ export default function Settings() {
                 {t('settings.purgeBtn')}
              </button>
            </SettingItem>
+        </SettingGroup>
+
+        <SettingGroup title={t('settings.sync')} icon={RefreshCw}>
+          <SettingItem label={t('settings.export')} description={t('settings.exportDesc')}>
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] text-amber-500 font-medium whitespace-nowrap">{t('settings.exportWarning')}</span>
+              <button
+                onClick={handleExport}
+                disabled={isExporting}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold border border-border rounded-lg hover:bg-muted transition-all disabled:opacity-50 shrink-0"
+              >
+                {isExporting ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+                {t('settings.export')}
+              </button>
+            </div>
+          </SettingItem>
+          <SettingItem label={t('settings.import')} description={t('settings.importDesc')}>
+            <div className="flex flex-col items-end gap-1.5">
+              <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={handleImport} />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isImporting}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold border border-border rounded-lg hover:bg-muted transition-all disabled:opacity-50"
+              >
+                {isImporting ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
+                {t('settings.import')}
+              </button>
+              {importResult && (
+                <span className="text-[9px] text-green-500 font-medium max-w-[200px] text-right">{importResult}</span>
+              )}
+            </div>
+          </SettingItem>
         </SettingGroup>
       </div>
 

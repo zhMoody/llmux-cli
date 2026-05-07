@@ -255,6 +255,14 @@ export function startGateway() {
       if (url.pathname === "/api/settings/reset" && req.method === "POST") {
         return purgeDatabase();
       }
+      if (url.pathname === "/api/export" && req.method === "GET") {
+        const { exportConfig } = await import("./routes/settings.js");
+        return exportConfig();
+      }
+      if (url.pathname === "/api/import" && req.method === "POST") {
+        const { importConfig } = await import("./routes/settings.js");
+        return importConfig(req);
+      }
 
       // 2. 静态文件托管 (Web UI，全量内嵌)
       let filePath = url.pathname;
