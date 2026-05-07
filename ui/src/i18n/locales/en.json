@@ -45,6 +45,8 @@
       "sessions": "Active Sessions"
     },
     "providerStatus": "Account Status",
+    "activeModels": "Active Models",
+    "noActiveModels": "No activity in this period",
     "recentLogs": "Recent Logs",
     "connected": "Connected",
     "viewReports": "View Detailed Reports",

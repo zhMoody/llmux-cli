@@ -50,6 +50,8 @@
       "sessions": "活跃会话"
     },
     "providerStatus": "账户在线状态",
+    "activeModels": "当前模型状态",
+    "noActiveModels": "该时间范围内无活动记录",
     "recentLogs": "最近日志动态",
     "connected": "已连接",
     "viewReports": "查看详细报告",

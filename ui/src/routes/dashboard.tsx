@@ -16,6 +16,7 @@ import { HealthStatusList } from '../components/Dashboard/HealthStatusList';
 import { UsageDistribution } from '../components/Dashboard/UsageDistribution';
 import { UsageTrendChart } from '../components/Dashboard/UsageTrendChart';
 import { RecentActivityList } from '../components/Dashboard/RecentActivityList';
+import { ActiveModelsCard, ModelHealth } from '../components/Dashboard/ActiveModelsCard';
 import { parseServerDate } from '../utils/date';
 
 const CHART_COLORS = ['#3b82f6', '#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
@@ -45,6 +46,7 @@ export default function Dashboard() {
   const { fetchAccounts } = useAccountsStore();
   const { summary, recentLogs, breakdown, isLoading, fetchSummary, fetchDetails } = useUsageStore();
   const [healthStatus, setHealthStatus] = useState<ProviderHealth[]>([]);
+  const [modelsHealth, setModelsHealth] = useState<ModelHealth[]>([]);
   const [timeRange, setTimeRange] = useState<TimeRange>('24h');
 
   // 计算时间范围，返回毫秒时间戳
@@ -98,6 +100,7 @@ export default function Dashboard() {
         fetchAccounts(),
         fetchModels(),
         checkProvidersHealth(),
+        fetchModelsHealth(),
         fetchDetails(start, end)
       ]);
     } catch (err) {
@@ -115,11 +118,28 @@ export default function Dashboard() {
     }
   };
 
+  const fetchModelsHealth = async () => {
+    try {
+      const res = await fetch('/api/models/health');
+      const data = await res.json();
+      setModelsHealth(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Models health check failed:', err);
+    }
+  };
+
   useEffect(() => {
     loadAll();
   }, [timeRange]);
 
   // 数据聚合逻辑 (保留在主页面，作为数据源)
+  const activeModels = useMemo(() => {
+    const { start } = getTimeParams(timeRange);
+    return modelsHealth
+      .filter(m => !start || m.last_checked >= start)
+      .sort((a, b) => b.last_checked - a.last_checked);
+  }, [modelsHealth, timeRange]);
+
   const providerData = useMemo(() => {
     return (breakdown?.byAccount || []).map((p: any) => ({
       name: p.name || p.id,
@@ -328,11 +348,12 @@ export default function Dashboard() {
         </div>
 
         {/* 右侧实时活动侧边栏 */}
-        <div className="xl:col-span-4 h-full">
-           <RecentActivityList 
-             recentLogs={recentLogs} 
-             t={t} 
-             onViewReports={() => navigate('/usage')} 
+        <div className="xl:col-span-4 space-y-6">
+           <ActiveModelsCard models={activeModels} t={t} />
+           <RecentActivityList
+             recentLogs={recentLogs}
+             t={t}
+             onViewReports={() => navigate('/usage')}
            />
         </div>
       </div>
