@@ -173,16 +173,21 @@ export async function deleteAccount(id: string) {
 export async function exportAccountUsage(id: string) {
   try {
     const logs = db.query("SELECT timestamp, model, input_tokens, output_tokens, latency_ms, success FROM usage_logs WHERE account_id = ? ORDER BY timestamp DESC").all(id) as any[];
-    
+
+    const escapeCsv = (val: unknown): string => {
+      const s = String(val ?? "");
+      return /[,"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+
     const headers = ["Timestamp", "Model", "Input Tokens", "Output Tokens", "Latency (ms)", "Status"];
     const csvContent = [
       headers.join(","),
       ...logs.map(log => [
-        log.timestamp,
-        log.model,
-        log.input_tokens,
-        log.output_tokens,
-        log.latency_ms,
+        escapeCsv(log.timestamp),
+        escapeCsv(log.model),
+        escapeCsv(log.input_tokens),
+        escapeCsv(log.output_tokens),
+        escapeCsv(log.latency_ms),
         log.success === 1 ? "Success" : "Error"
       ].join(","))
     ].join("\n");

@@ -55,6 +55,9 @@ CREATE TABLE IF NOT EXISTS usage_logs (
   is_test INTEGER DEFAULT 0
 );
 
+CREATE INDEX IF NOT EXISTS idx_usage_logs_timestamp ON usage_logs(timestamp);
+CREATE INDEX IF NOT EXISTS idx_usage_logs_account_id ON usage_logs(account_id);
+
 -- 应用设置
 CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,

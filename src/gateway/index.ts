@@ -306,9 +306,8 @@ export function startGateway() {
       });
     },
     error(error) {
-      return new Response(`<pre>${error}\n${error.stack}</pre>`, {
-        headers: { "Content-Type": "text/html" },
-      });
+      console.error(error);
+      return new Response("Internal Server Error", { status: 500 });
     },
   });
 
