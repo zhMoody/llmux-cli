@@ -33,7 +33,8 @@
     "healthy": "Healthy",
     "degraded": "Degraded",
     "down": "Down",
-    "alias": "Alias"
+    "alias": "Alias",
+    "setup": "Quick Setup"
   },
   "dashboard": {
     "overview": "System Overview",
@@ -259,6 +260,20 @@
     "testAllDesc": "Test all filtered models sequentially in backend",
     "noAccountsConnected": "No accounts connected",
     "noModelsFound": "No models found in this provider"
+  },
+  "setup": {
+    "title": "Quick Setup",
+    "tools": "Tools",
+    "subtitle": "Pick your tool and API key, then copy the config to connect to the LLMux gateway.",
+    "step1": "Select API Key",
+    "step2": "Select Tool",
+    "step3": "Copy Config",
+    "noKeys": "No API keys available.",
+    "createKey": "Create one",
+    "copy": "Copy config",
+    "gatewayUrl": "Gateway URL:",
+    "step2Models": "Select Models (multi-select)",
+    "selectedCount": "{{count}} model(s) selected"
   },
   "auth": {
     "webLogin": "Web Session Login",

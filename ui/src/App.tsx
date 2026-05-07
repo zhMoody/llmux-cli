@@ -1,17 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  Users, 
-  Box, 
-  Activity, 
-  Settings, 
+import {
+  LayoutDashboard,
+  Users,
+  Box,
+  Activity,
+  Settings,
   Info,
   ChevronRight,
   Zap,
   Key as KeyIcon,
   Menu,
-  X
+  X,
+  MonitorSmartphone,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import Accounts from './routes/accounts';
@@ -21,6 +22,7 @@ import Usage from './routes/usage';
 import SettingsPage from './routes/settings';
 import About from './routes/about';
 import KeysPage from './routes/keys';
+import SetupPage from './routes/setup';
 import { useSettingsStore } from './stores/settings';
 
 function cn(...classes: (string | undefined | null | false)[]) {
@@ -135,7 +137,8 @@ function App() {
           <NavItem to="/models" icon={Box} labelKey="common.models" />
           <NavItem to="/keys" icon={KeyIcon} labelKey="common.keys" />
           <NavItem to="/usage" icon={Activity} labelKey="common.usage" />
-          
+          <NavItem to="/setup" icon={MonitorSmartphone} labelKey="common.setup" />
+
           <div className="pt-6 text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest px-3 mb-2">{t('common.menuPref')}</div>
           <NavItem to="/settings" icon={Settings} labelKey="common.settings" />
           <NavItem to="/about" icon={Info} labelKey="common.about" />
@@ -174,6 +177,7 @@ function App() {
               <Route path="/models" element={<Models />} />
               <Route path="/keys" element={<KeysPage />} />
               <Route path="/usage" element={<Usage />} />
+              <Route path="/setup" element={<SetupPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/about" element={<About />} />
             </Routes>

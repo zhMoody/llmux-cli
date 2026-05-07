@@ -35,7 +35,8 @@
     "healthy": "健康",
     "degraded": "部分降级",
     "down": "故障",
-    "alias": "别名"
+    "alias": "别名",
+    "setup": "一键配置"
   },
   "dashboard": {
     "overview": "系统概览",
@@ -291,8 +292,21 @@
     "emptyAuthWarning": "检测到权限异常",
     "emptyAuthDesc": "以下密钥所授权的所有模型别名均已被删除，目前这些密钥处于【不可用】状态，请尽快重新编辑授权："
   },
+  "setup": {
+    "title": "一键配置",
+    "tools": "工具",
+    "subtitle": "选择您的工具和访问密钥，复制配置即可接入 LLMux 网关。",
+    "step1": "选择访问密钥",
+    "step2": "选择工具",
+    "step3": "复制配置",
+    "noKeys": "暂无可用的 API 密钥。",
+    "createKey": "前往创建",
+    "copy": "复制配置",
+    "gatewayUrl": "网关地址：",
+    "step2Models": "选择模型（可多选）",
+    "selectedCount": "已选 {{count}} 个模型"
+  },
   "auth": {
-    "webLogin": "官方会话登录",
     "webSubtitle": "通过浏览器会话导入（无需 API Key）。",
     "step1": "1. 访问官方网站",
     "step1Btn": "去 {{provider}} 官网",
