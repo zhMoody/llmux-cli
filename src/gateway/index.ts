@@ -12,6 +12,7 @@ import {
 import { handleWebSession } from "./routes/auth.js";
 import { handleChatRoute } from "./routes/chat.js";
 import { getHealthStatus } from "./routes/health.js";
+import { getInstalledTools, getClaudeSettings, applyClaudeSettings, listClaudeBackups, restoreClaudeBackup, deleteClaudeBackup } from "./routes/system.js";
 import {
   checkAuthBasic,
   checkAuthModel,
@@ -245,6 +246,24 @@ export function startGateway() {
       // 健康状态
       if (url.pathname === "/api/health" && req.method === "GET") {
         return getHealthStatus();
+      }
+
+      // 已安装工具检测
+      if (url.pathname === "/api/system/tools" && req.method === "GET") {
+        return getInstalledTools();
+      }
+
+      // Claude Code settings.json 读写
+      if (url.pathname === "/api/system/claude-settings") {
+        if (req.method === "GET") return getClaudeSettings();
+        if (req.method === "POST") return applyClaudeSettings(req);
+      }
+
+      // Claude Code 备份管理
+      if (url.pathname === "/api/system/claude-backups") {
+        if (req.method === "GET") return listClaudeBackups(req);
+        if (req.method === "POST") return restoreClaudeBackup(req);
+        if (req.method === "DELETE") return deleteClaudeBackup(req);
       }
 
       // 系统设置
