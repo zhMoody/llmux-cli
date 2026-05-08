@@ -15,7 +15,12 @@ import {
 import { handleWebSession } from "./routes/auth.js";
 import { handleChatRoute } from "./routes/chat.js";
 import { getHealthStatus } from "./routes/health.js";
-import { deleteApiKey, createApiKey, listApiKeys, updateApiKey } from "./routes/keys.js";
+import {
+  deleteApiKey,
+  createApiKey,
+  listApiKeys,
+  updateApiKey,
+} from "./routes/keys.js";
 import {
   deleteModelAlias,
   getAvailableModels,
@@ -26,7 +31,13 @@ import {
   startTestQueue,
   testModel,
 } from "./routes/models.js";
-import { exportConfig, getSettings, importConfig, purgeDatabase, updateSettings } from "./routes/settings.js";
+import {
+  exportConfig,
+  getSettings,
+  importConfig,
+  purgeDatabase,
+  updateSettings,
+} from "./routes/settings.js";
 import {
   applyClaudeSettings,
   deleteClaudeBackup,
@@ -35,12 +46,17 @@ import {
   listClaudeBackups,
   restoreClaudeBackup,
 } from "./routes/system.js";
-import { getUsageDetails, getUsageLogs, getUsageSummary } from "./routes/usage.js";
+import {
+  getUsageDetails,
+  getUsageLogs,
+  getUsageSummary,
+} from "./routes/usage.js";
 
 function getMimeType(path: string): string {
   if (path.endsWith(".html")) return "text/html; charset=utf-8";
   if (path.endsWith(".css")) return "text/css; charset=utf-8";
-  if (path.endsWith(".js") || path.endsWith(".mjs")) return "application/javascript; charset=utf-8";
+  if (path.endsWith(".js") || path.endsWith(".mjs"))
+    return "application/javascript; charset=utf-8";
   if (path.endsWith(".svg")) return "image/svg+xml";
   if (path.endsWith(".json")) return "application/json; charset=utf-8";
   if (path.endsWith(".png")) return "image/png";
@@ -65,18 +81,27 @@ function buildRouter(): Router {
     r.post("/messages", async ({ req }) => {
       const body = (await req.clone().json()) as { model?: string };
       if (body.model) {
-        const { resolveProxyRoute } = await import("../services/proxy/router.js");
-        const { executePassthrough } = await import("../services/proxy/passthrough.js");
+        const { resolveProxyRoute } =
+          await import("../services/proxy/router.js");
+        const { executePassthrough } =
+          await import("../services/proxy/passthrough.js");
         const ctx = resolveProxyRoute(body.model, "anthropic");
         if (ctx?.decision === "passthrough") {
-          return executePassthrough(req, ctx.account, ctx.anthropicBaseUrl, ctx.resolvedModel);
+          return executePassthrough(
+            req,
+            ctx.account,
+            ctx.anthropicBaseUrl,
+            ctx.resolvedModel,
+          );
         }
       }
       return anthropicIngress.handleMessages(req);
     });
 
     r.get("/models", ({ req }) => {
-      const isAnthropic = !!req.headers.get("x-api-key") || !!req.headers.get("anthropic-version");
+      const isAnthropic =
+        !!req.headers.get("x-api-key") ||
+        !!req.headers.get("anthropic-version");
       if (isAnthropic) return anthropicIngress.handleModels();
       const models = dispatcher.listModelAliases();
       return Response.json({
@@ -109,13 +134,17 @@ function buildRouter(): Router {
     r.post("/accounts", ({ req }) => createAccount(req));
     r.put("/accounts/:id", ({ req, params }) => updateAccount(params.id, req));
     r.delete("/accounts/:id", ({ params }) => deleteAccount(params.id));
-    r.get("/accounts/:id/export", ({ params }) => exportAccountUsage(params.id));
+    r.get("/accounts/:id/export", ({ params }) =>
+      exportAccountUsage(params.id),
+    );
 
     // 模型管理
     r.get("/models/available", () => getAvailableModels());
     r.get("/models/aliases", () => getModelAliases());
     r.post("/models/aliases", ({ req }) => setModelAlias(req));
-    r.delete("/models/aliases/:id", ({ params }) => deleteModelAlias(params.id));
+    r.delete("/models/aliases/:id", ({ params }) =>
+      deleteModelAlias(params.id),
+    );
     r.get("/models/health", () => getModelsHealth());
     r.get("/models/test-queue/status", () => getTestQueueStatus());
     r.post("/models/test-all", ({ req }) => startTestQueue(req));
@@ -159,7 +188,8 @@ export function startGateway() {
 
       // 路径规范化（兼容 /v1/v1/ 双前缀）
       const normalized = req.url.replace(/\/v1\/v1\//, "/v1/");
-      const normalizedReq = normalized !== req.url ? new Request(normalized, req) : req;
+      const normalizedReq =
+        normalized !== req.url ? new Request(normalized, req) : req;
 
       // 路由匹配
       const response = await router.handle(normalizedReq);
@@ -167,14 +197,18 @@ export function startGateway() {
 
       // 静态文件托管
       let filePath = url.pathname;
-      if (filePath === "/" || filePath === "/ui" || filePath === "/ui/") filePath = "/index.html";
+      if (filePath === "/" || filePath === "/ui" || filePath === "/ui/")
+        filePath = "/index.html";
       if (filePath.startsWith("/ui/")) filePath = filePath.substring(3);
 
       const asset = serveAsset(filePath);
       if (asset) return asset;
 
       // SPA 回退
-      if (!url.pathname.startsWith("/v1/") && !url.pathname.startsWith("/api/")) {
+      if (
+        !url.pathname.startsWith("/v1/") &&
+        !url.pathname.startsWith("/api/")
+      ) {
         const spa = serveAsset("/index.html");
         if (spa) return spa;
       }
