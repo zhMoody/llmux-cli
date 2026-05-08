@@ -28,6 +28,7 @@ export class AnthropicAdapter implements Adapter {
       "x-api-key": account.api_key,
       "anthropic-version": "2023-06-01",
     };
+    if (request.anthropic_beta) headers["anthropic-beta"] = request.anthropic_beta;
 
     const response = await fetch(url, {
       method: "POST",

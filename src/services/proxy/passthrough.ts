@@ -81,10 +81,10 @@ async function doFetch(
   const headers = new Headers();
   headers.set("content-type", "application/json");
   headers.set("x-api-key", authHeader["x-api-key"]);
-  headers.set("provider-version", authHeader["anthropic-version"]);
+  headers.set("anthropic-version", authHeader["anthropic-version"]);
 
-  const beta = originalReq.headers.get("provider-beta");
-  if (beta) headers.set("provider-beta", beta);
+  const beta = originalReq.headers.get("anthropic-beta");
+  if (beta) headers.set("anthropic-beta", beta);
 
   // 3. 发请求
   const upstreamRes = await fetch(targetUrl, {

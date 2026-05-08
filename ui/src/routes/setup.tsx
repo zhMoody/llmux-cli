@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Wrench } from 'lucide-react';
+import { Wrench, RotateCcw } from 'lucide-react';
 import { useKeysStore } from '../stores/keys';
 import { useModelsStore } from '../stores/models';
 import { TOOLS } from '../components/Setup/types';
@@ -20,6 +20,8 @@ export default function Setup() {
   const [currentSettings, setCurrentSettings] = useState<Record<string, any> | null>(null);
   const [settingsExists, setSettingsExists] = useState(false);
   const [settingsLoading, setSettingsLoading] = useState(false);
+  const [settingsFetched, setSettingsFetched] = useState(false);
+  const [keysFetched, setKeysFetched] = useState(false);
 
   const fetchClaudeSettings = useCallback(async () => {
     setSettingsLoading(true);
@@ -30,11 +32,12 @@ export default function Setup() {
       setCurrentSettings(data.settings);
     } finally {
       setSettingsLoading(false);
+      setSettingsFetched(true);
     }
   }, []);
 
   useEffect(() => {
-    fetchKeys();
+    fetchKeys().then(() => setKeysFetched(true));
     fetchAliases();
     fetch('/api/system/tools')
       .then(r => r.json())
@@ -67,16 +70,24 @@ export default function Setup() {
         )}
 
         {selectedTool === 'claude-code' && (
-          <ClaudeCodePanel
-            keys={keys}
-            aliases={aliases}
-            gatewayUrl={gatewayUrl}
-            currentSettings={currentSettings}
-            settingsExists={settingsExists}
-            settingsLoading={settingsLoading}
-            onRefreshSettings={fetchClaudeSettings}
-            onSettingsApplied={(s) => { setCurrentSettings(s); setSettingsExists(true); }}
-          />
+          !settingsFetched || !keysFetched ? (
+            <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
+              <RotateCcw size={14} className="animate-spin shrink-0" />
+              <span>{t('setup.loading')}</span>
+            </div>
+          ) : (
+            <ClaudeCodePanel
+              keys={keys}
+              aliases={aliases}
+              gatewayUrl={gatewayUrl}
+              currentSettings={currentSettings}
+              settingsExists={settingsExists}
+              settingsLoading={settingsLoading}
+              settingsFetched={settingsFetched}
+              onRefreshSettings={fetchClaudeSettings}
+              onSettingsApplied={(s) => { setCurrentSettings(s); setSettingsExists(true); }}
+            />
+          )
         )}
       </div>
     </div>

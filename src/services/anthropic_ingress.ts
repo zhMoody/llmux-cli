@@ -21,6 +21,7 @@ export class AnthropicIngressService {
         stop: anthropicReq.stop_sequences,
         tools: anthropicReq.tools ? this.mapToolsToOpenAI(anthropicReq.tools) : undefined,
         tool_choice: anthropicReq.tool_choice ? this.mapToolChoiceToOpenAI(anthropicReq.tool_choice) : undefined,
+        anthropic_beta: req.headers.get("anthropic-beta") || undefined,
       };
 
       // 2. 调用调度器

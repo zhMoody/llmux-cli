@@ -128,6 +128,8 @@ export interface ChatRequest {
   tools?: any[];
   tool_choice?: any;
   is_test?: boolean;
+  /** Anthropic beta header，用于启用 1M 上下文等特性 */
+  anthropic_beta?: string;
 }
 
 // ─── 账户 & 适配器 ────────────────────────────────────────────────────────────
