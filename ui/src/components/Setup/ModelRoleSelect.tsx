@@ -14,8 +14,6 @@ interface Props {
 
 export function ModelRoleSelect({ label, envKey, models, value, longContext, onChange, onLongContextChange }: Props) {
   const effectiveValue = value ? (longContext ? `${value}[1m]` : value) : '';
-  // 如果当前值不在列表里（来自已有 settings），补进去保证回显
-  const options = value && !models.includes(value) ? [value, ...models] : models;
 
   return (
     <div className="space-y-1.5">
@@ -31,7 +29,7 @@ export function ModelRoleSelect({ label, envKey, models, value, longContext, onC
             className="w-full appearance-none bg-card border border-border rounded-lg px-3 py-2 text-xs font-medium pr-7 focus:outline-none focus:border-primary transition-colors"
           >
             <option value="">— 不设置 —</option>
-            {options.map(m => (
+            {models.map(m => (
               <option key={m} value={m}>{m}</option>
             ))}
           </select>

@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Globe } from 'lucide-react';
-import { cn } from '../utils';
 import { KeySelector } from '../KeySelector';
 import { ModelRoleSelect } from '../ModelRoleSelect';
 import { SettingsPreview } from '../SettingsPreview';
@@ -57,7 +56,7 @@ export function ClaudeCodePanel({
   const { t } = useTranslation();
   const initializedFromSettings = useRef(false);
   const restoringRef = useRef(false);
-  const skipNextKeyCleanup = useRef(false);
+  const skipNextKeyCleanup = useRef(0);
 
   const [selectedKeyId, setSelectedKeyId] = useState<number | ''>('');
   const [opusModel, setOpusModel]     = useState('');
@@ -92,7 +91,7 @@ export function ClaudeCodePanel({
   const [pendingRestoreName, setPendingRestoreName] = useState<string | null>(null);
   const [deleteModalName, setDeleteModalName] = useState<string | null>(null);
 
-  // 初始化：settings 和 keys 都就绪后回填 key
+  // 初始化：settings 和 keys 都就绪后，一次性回填 key + 模型
   useEffect(() => {
     if (!settingsFetched || initializedFromSettings.current || keys.length === 0) return;
     initializedFromSettings.current = true;
@@ -101,30 +100,23 @@ export function ClaudeCodePanel({
     const backupApiKey = env.ANTHROPIC_API_KEY ?? env.ANTHROPIC_AUTH_TOKEN ?? '';
     const matchedKey = keys.find(k => k.key === backupApiKey);
 
-    skipNextKeyCleanup.current = true;
+    skipNextKeyCleanup.current = 2;
     if (matchedKey) setSelectedKeyId(matchedKey.id);
     else setSelectedKeyId(keys[0].id);
-  }, [settingsFetched, keys]);
 
-  // allowedModelsList 就绪后从 currentSettings 回填模型
-  useEffect(() => {
-    if (!initializedFromSettings.current || allowedModelsList.length === 0) return;
-    if (opusModel || sonnetModel || haikuModel) return; // 已经有值，不覆盖
-
-    const env = currentSettings?.env ?? {};
+    // 模型回填：直接在这里做，不依赖 allowedModelsList（避免 ref 时序问题）
     const opus   = parseModel(env.ANTHROPIC_DEFAULT_OPUS_MODEL);
     const sonnet = parseModel(env.ANTHROPIC_DEFAULT_SONNET_MODEL);
     const haiku  = parseModel(env.ANTHROPIC_DEFAULT_HAIKU_MODEL);
-
     if (opus.alias)   { setOpusModel(opus.alias);     setOpus1m(opus.longContext); }
     if (sonnet.alias) { setSonnetModel(sonnet.alias); setSonnet1m(sonnet.longContext); }
     if (haiku.alias)  { setHaikuModel(haiku.alias);   setHaiku1m(haiku.longContext); }
-  }, [allowedModelsList.join(',')]);
+  }, [settingsFetched, keys]);
 
   // key 切换时清空模型（跳过初始化和还原）
   useEffect(() => {
     if (!initializedFromSettings.current) return;
-    if (skipNextKeyCleanup.current) { skipNextKeyCleanup.current = false; return; }
+    if (skipNextKeyCleanup.current > 0) { skipNextKeyCleanup.current--; return; }
     if (restoringRef.current) { restoringRef.current = false; return; }
     setOpusModel(''); setSonnetModel(''); setHaikuModel('');
     setOpus1m(false); setSonnet1m(false); setHaiku1m(false);
