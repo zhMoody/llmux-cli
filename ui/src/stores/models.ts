@@ -14,16 +14,26 @@ export interface ModelAlias {
   provider_id: string | null;
 }
 
+export interface Account {
+  id: number;
+  alias: string;
+  provider_id: string;
+  base_url: string | null;
+  is_active: number;
+}
+
 interface ModelsState {
   availableModels: AvailableModel[];
   aliases: ModelAlias[];
+  accounts: Account[];
   isLoading: boolean;
   error: string | null;
   fetchModels: () => Promise<void>;
   fetchAliases: () => Promise<void>;
+  fetchAccounts: () => Promise<void>;
   addAlias: (alias: string, targetModel: string, providerId?: string) => Promise<void>;
   deleteAlias: (id: number) => Promise<void>;
-  testModel: (modelId: string, providerId?: string) => Promise<{ success: boolean; error?: string; latency?: number }>;
+  testModel: (modelId: string, providerId?: string, accountId?: number) => Promise<{ success: boolean; error?: string; latency?: number }>;
   startTestQueue: (models: { model: string, providerId: string }[]) => Promise<{ success: boolean; error?: string }>;
   fetchTestQueueStatus: () => Promise<{ isRunning: boolean; current: number; total: number; progress: number }>;
 }
@@ -31,6 +41,7 @@ interface ModelsState {
 export const useModelsStore = create<ModelsState>((set, get) => ({
   availableModels: [],
   aliases: [],
+  accounts: [],
   isLoading: false,
   error: null,
 
@@ -55,6 +66,17 @@ export const useModelsStore = create<ModelsState>((set, get) => ({
       set({ aliases: data });
     } catch (err: any) {
       set({ error: err.message });
+    }
+  },
+
+  fetchAccounts: async () => {
+    try {
+      const res = await fetch('/api/accounts');
+      if (!res.ok) throw new Error('Failed to fetch accounts');
+      const data = await res.json();
+      set({ accounts: data });
+    } catch (err: any) {
+      console.error('Failed to fetch accounts:', err.message);
     }
   },
 
@@ -87,12 +109,12 @@ export const useModelsStore = create<ModelsState>((set, get) => ({
     }
   },
 
-  testModel: async (modelId, providerId) => {
+  testModel: async (modelId, providerId, accountId) => {
     try {
       const res = await fetch('/api/models/test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: modelId, providerId }),
+        body: JSON.stringify({ model: modelId, providerId, accountId }),
       });
       return await res.json();
     } catch (err: any) {

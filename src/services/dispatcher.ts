@@ -75,14 +75,29 @@ export class Dispatcher {
   /**
    * 调度聊天请求（带自动重试机制）
    */
-  async dispatchChat(request: ChatRequest, forcedProviderId?: string): Promise<Response> {
+  async dispatchChat(request: ChatRequest, forcedProviderId?: string, forcedAccountId?: number): Promise<Response> {
     const { providerId: resolvedProviderId, targetModel } = this.resolveModel(request.model);
     const providerId = forcedProviderId || resolvedProviderId;
 
     // 覆写为真实模型名
     request.model = targetModel;
 
-    const accounts = this.getAccounts(providerId);
+    // 如果指定了 accountId，直接使用该账户（用于自定义别名验证等场景）
+    let accounts: Account[];
+    if (forcedAccountId) {
+      const raw = db.query("SELECT * FROM accounts WHERE id = ? AND is_active = 1").get(forcedAccountId) as Account | undefined;
+      if (!raw) {
+        return Response.json({ error: `Account not found or inactive: ${forcedAccountId}` }, { status: 404 });
+      }
+      try {
+        accounts = [{ ...raw, api_key: decryptKey(raw.api_key) }];
+      } catch {
+        return Response.json({ error: `Failed to decrypt API key for account ${raw.alias}` }, { status: 500 });
+      }
+    } else {
+      accounts = this.getAccounts(providerId);
+    }
+
     if (accounts.length === 0) {
       return Response.json({ error: `No active accounts available for: ${providerId}` }, { status: 503 });
     }

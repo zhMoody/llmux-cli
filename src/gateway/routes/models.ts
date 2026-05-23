@@ -98,8 +98,15 @@ export async function deleteModelAlias(id: string) {
  */
 export async function testModel(req: Request) {
   try {
-    const { model, providerId } = await req.json() as any;
+    const { model, providerId, accountId } = await req.json() as any;
     if (!model) return Response.json({ error: "No model provided" }, { status: 400 });
+
+    // 获取 base_url 用于日志
+    let baseUrl = providerId || 'unknown';
+    if (accountId) {
+      const acc = db.query("SELECT base_url, alias FROM accounts WHERE id = ?").get(accountId) as any;
+      if (acc) baseUrl = acc.base_url || acc.alias;
+    }
 
     const startTime = Date.now();
     const response = await dispatcher.dispatchChat({
@@ -108,7 +115,7 @@ export async function testModel(req: Request) {
       max_tokens: 1,
       stream: false,
       is_test: true
-    }, providerId);
+    }, providerId, accountId);
 
     const latency = Date.now() - startTime;
 
@@ -120,19 +127,26 @@ export async function testModel(req: Request) {
         errorMsg = errJson.error?.message || errJson.error || errorText;
       } catch (e) {}
 
-      return Response.json({ 
-        success: false, 
+      console.log(`[Test] ❌ ${baseUrl} | ${model} | ${response.status} | ${errorMsg} | ${latency}ms`);
+
+      return Response.json({
+        success: false,
         error: errorMsg,
         status: response.status,
-        latency 
+        latency
       });
     }
 
-    return Response.json({ 
-      success: true, 
-      latency 
+    const data = await response.clone().json().catch(() => null);
+    const content = data?.choices?.[0]?.message?.content || data?.content?.[0]?.text || '(empty)';
+    console.log(`[Test] ✅ ${baseUrl} | ${model} | ${content} | ${latency}ms`);
+
+    return Response.json({
+      success: true,
+      latency
     });
   } catch (err: any) {
+    console.log(`[Test] 💥 ${model} | ${err.message}`);
     return Response.json({ success: false, error: err.message }, { status: 500 });
   }
 }

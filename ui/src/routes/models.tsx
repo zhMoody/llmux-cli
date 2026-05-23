@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useModelsStore } from '../stores/models';
-import { 
-  Box, 
-  Search, 
-  RefreshCcw, 
+import {
+  Box,
+  Search,
+  RefreshCcw,
   ExternalLink,
   ChevronRight,
   Database,
@@ -13,7 +13,11 @@ import {
   LayoutGrid,
   Zap,
   ArrowRight,
-  Copy
+  Copy,
+  PenLine,
+  CheckCircle2,
+  XCircle,
+  Loader2
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Dialog, ConfirmDialog } from '../components/Modal';
@@ -26,7 +30,7 @@ function cn(...classes: (string | undefined | null | false)[]) {
 
 export default function Models() {
   const { t, i18n } = useTranslation();
-  const { availableModels, aliases, isLoading, fetchModels, fetchAliases, addAlias, deleteAlias, testModel } = useModelsStore();
+  const { availableModels, aliases, accounts, isLoading, fetchModels, fetchAliases, fetchAccounts, addAlias, deleteAlias, testModel } = useModelsStore();
   const [search, setSearch] = useState('');
   const [activeProvider, setActiveProvider] = useState<string>('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -36,6 +40,10 @@ export default function Models() {
   const { startTestQueue, fetchTestQueueStatus } = useModelsStore();
   const [testAllConfirm, setTestAllConfirm] = useState(false);
   const [aliasToDelete, setAliasToDelete] = useState<{id: number, name: string} | null>(null);
+  const [isCustomModalOpen, setIsCustomModalOpen] = useState(false);
+  const [customForm, setCustomForm] = useState({ alias: '', target: '', accountId: '' });
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verifyResult, setVerifyResult] = useState<{ success: boolean; error?: string; latency?: number } | null>(null);
 
   const handleTest = async (modelId: string, providerId: string) => {
     setTestResults(prev => ({ ...prev, [modelId]: { success: false, loading: true } }));
@@ -98,6 +106,7 @@ export default function Models() {
   useEffect(() => {
     fetchModels();
     fetchAliases();
+    fetchAccounts();
     fetchHealth();
     // 进入页面时仅检查一次队列状态
     fetchTestQueueStatus().then(setQueueStatus);
@@ -176,6 +185,38 @@ export default function Models() {
     }
   };
 
+  const handleVerify = async () => {
+    if (!customForm.target || !customForm.accountId) return;
+    const account = accounts.find(a => a.id === Number(customForm.accountId));
+    if (!account) return;
+
+    setIsVerifying(true);
+    setVerifyResult(null);
+    try {
+      const result = await testModel(customForm.target, account.provider_id, account.id);
+      setVerifyResult(result);
+    } catch (err: any) {
+      setVerifyResult({ success: false, error: err.message });
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  const handleCustomAddAlias = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!verifyResult?.success) return;
+    const account = accounts.find(a => a.id === Number(customForm.accountId));
+    try {
+      // 使用账户别名作为 provider_id，dispatcher 会通过 alias 回退匹配
+      await addAlias(customForm.alias, customForm.target, account?.alias || '');
+      setIsCustomModalOpen(false);
+      setCustomForm({ alias: '', target: '', accountId: '' });
+      setVerifyResult(null);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       {/* Header */}
@@ -206,12 +247,19 @@ export default function Models() {
            >
              <RefreshCcw size={18} className={cn(isLoading && "animate-spin")} />
            </button>
-           <button 
+           <button
              onClick={() => setIsModalOpen(true)}
              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:opacity-90 transition-all shadow-sm"
            >
              <Plus size={16} />
              {t('models.createAlias')}
+           </button>
+           <button
+             onClick={() => setIsCustomModalOpen(true)}
+             className="flex items-center gap-2 px-4 py-2 bg-card border border-border text-foreground rounded-lg text-sm font-medium hover:bg-muted transition-all shadow-sm"
+           >
+             <PenLine size={16} />
+             {t('models.customAlias')}
            </button>
         </div>
       </div>
@@ -441,6 +489,96 @@ export default function Models() {
              <button type="submit" className="flex-1 px-4 py-2 text-sm font-bold bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-all flex items-center justify-center gap-2">
                <Save size={16} /> {t('common.save')}
              </button>
+          </div>
+        </form>
+      </Dialog>
+
+      {/* Custom Alias Modal */}
+      <Dialog isOpen={isCustomModalOpen} onClose={() => { setIsCustomModalOpen(false); setVerifyResult(null); }} title={t('models.customAliasTitle')}>
+        <form onSubmit={handleCustomAddAlias} className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-muted-foreground uppercase">{t('models.selectAccount')}</label>
+            <select
+              value={customForm.accountId}
+              onChange={e => {
+                setCustomForm({ ...customForm, accountId: e.target.value, target: '' });
+                setVerifyResult(null);
+              }}
+              className="w-full px-4 py-2 bg-muted/50 border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all font-semibold"
+            >
+              <option value="">{t('models.selectAccountPlaceholder')}</option>
+              {accounts.filter(a => a.is_active === 1).map(a => (
+                <option key={a.id} value={a.id}>[{a.provider_id}] {a.alias}</option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-muted-foreground uppercase">{t('models.aliasName')}</label>
+            <input
+              type="text" required value={customForm.alias}
+              onChange={e => setCustomForm({ ...customForm, alias: e.target.value })}
+              placeholder={t('models.aliasPlaceholder')}
+              className="w-full px-4 py-2 bg-muted/50 border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-muted-foreground uppercase">{t('models.manualModel')}</label>
+            <input
+              type="text" required value={customForm.target}
+              onChange={e => {
+                setCustomForm({ ...customForm, target: e.target.value });
+                setVerifyResult(null);
+              }}
+              placeholder={t('models.manualModelPlaceholder')}
+              list="custom-model-options"
+              className="w-full px-4 py-2 bg-muted/50 border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+            />
+            <datalist id="custom-model-options">
+              {availableModels
+                .filter(m => {
+                  if (!customForm.accountId) return true;
+                  const account = accounts.find(a => a.id === Number(customForm.accountId));
+                  return account ? m.owned_by === account.provider_id : true;
+                })
+                .map(m => (
+                  <option key={m.id} value={m.id} />
+                ))}
+            </datalist>
+          </div>
+
+          {/* Verify */}
+          <div className="space-y-2">
+            <button
+              type="button"
+              onClick={handleVerify}
+              disabled={isVerifying || !customForm.target || !customForm.accountId}
+              className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 text-amber-600 rounded-lg text-sm font-medium hover:bg-amber-500/20 transition-all disabled:opacity-50"
+            >
+              {isVerifying ? <Loader2 size={16} className="animate-spin" /> : <Zap size={16} />}
+              {isVerifying ? t('models.verifying') : t('models.verify')}
+            </button>
+            {verifyResult && (
+              <div className={cn(
+                "flex items-center gap-2 p-3 rounded-lg text-sm font-medium",
+                verifyResult.success ? "bg-green-500/10 text-green-600" : "bg-red-500/10 text-red-600"
+              )}>
+                {verifyResult.success ? <CheckCircle2 size={16} /> : <XCircle size={16} />}
+                {verifyResult.success
+                  ? `${t('models.verifySuccess')}${verifyResult.latency ? ` (${(verifyResult.latency / 1000).toFixed(1)}s)` : ''}`
+                  : verifyResult.error || t('models.verifyFirst')}
+              </div>
+            )}
+          </div>
+
+          <div className="pt-2 flex gap-3">
+            <button type="button" onClick={() => { setIsCustomModalOpen(false); setVerifyResult(null); }} className="flex-1 px-4 py-2 text-sm font-bold border border-border rounded-lg hover:bg-muted transition-all">{t('common.cancel')}</button>
+            <button
+              type="submit"
+              disabled={!verifyResult?.success}
+              className="flex-1 px-4 py-2 text-sm font-bold bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              <Save size={16} /> {t('common.save')}
+            </button>
           </div>
         </form>
       </Dialog>
