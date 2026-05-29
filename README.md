@@ -20,7 +20,8 @@
 <p align="center">
   <strong>English</strong> | <a href="./README.zh-CN.md">中文</a>
 </p>
-
+---
+ - repo: https://github.com/zhMoody/llmux-cli-rs
 ---
 
 ## Why LLMux?
